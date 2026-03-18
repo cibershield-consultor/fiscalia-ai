@@ -369,6 +369,12 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 .limit-bar{height:3px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden}
 .limit-fill{height:100%;background:var(--gold);border-radius:2px;transition:.4s ease}
 .limit-fill.low{background:var(--red)}
+
+/* ── TRIAL BANNER ── */
+.trial-banner{background:linear-gradient(135deg,rgba(232,184,75,0.12),rgba(232,184,75,0.06));border-bottom:1px solid rgba(232,184,75,0.25);padding:8px 20px;display:flex;align-items:center;justify-content:space-between;font-size:.78rem;color:rgba(240,238,232,.85);flex-shrink:0}
+.trial-banner strong{color:var(--gold)}
+.trial-banner-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;padding:2px 6px}
+.trial-banner.hidden{display:none}
 </style>
 </head>
 <body>
@@ -502,6 +508,12 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="topbar-actions">
         <button class="chip chip-plan-free" id="plan-chip" onclick="showPlanModal()">⭐ Plan Gratuito</button>
       </div>
+    </div>
+
+    <!-- TRIAL BANNER -->
+    <div class="trial-banner hidden" id="trial-banner">
+      <span>🎉 <strong>Prueba Premium activa</strong> — Tienes acceso completo durante tu período de prueba. <span id="trial-days-left"></span></span>
+      <button class="trial-banner-close" onclick="document.getElementById('trial-banner').classList.add('hidden')">✕</button>
     </div>
 
     <!-- CHAT VIEW -->
@@ -717,7 +729,8 @@ tr:hover td{background:rgba(255,255,255,0.02)}
           <div class="plan-feature">Novedades fiscales 2026</div>
           <div class="plan-feature">Alertas de plazos</div>
         </div>
-        <button class="btn-upgrade" onclick="toast('🚧 Pagos próximamente disponibles','ok');hidePlanModal()">Actualizar a Premium</button>
+        <button class="btn-upgrade" onclick="startCheckout()">Actualizar a Premium — 9,99€/mes</button>
+        <p style="text-align:center;font-size:.7rem;color:var(--text3);margin-top:8px">Cancela cuando quieras · Pago seguro con Stripe</p>
       </div>
     </div>
   </div>
@@ -817,6 +830,17 @@ function continueAsGuest() {
 }
 
 function initApp() {
+  // Show trial banner if applicable
+  if (S.user?.plan === 'premium' && S.user?.plan_expires_at) {
+    const banner = document.getElementById('trial-banner');
+    const expiresAt = new Date(S.user.plan_expires_at);
+    const daysLeft = Math.ceil((expiresAt - new Date()) / (1000*60*60*24));
+    if (daysLeft > 0) {
+      banner.classList.remove('hidden');
+      document.getElementById('trial-days-left').textContent = `Quedan ${daysLeft} día${daysLeft!==1?'s':''}.`;
+    }
+  }
+
   // Update UI with user info
   const name = S.user?.full_name || S.user?.email || 'Invitado';
   const initials = S.user?.avatar_initials || name.slice(0,2).toUpperCase();
@@ -1285,6 +1309,48 @@ function renderMd(text) {
 }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Stripe Checkout ──────────────────────────────────
+async function startCheckout() {
+  if (!S.user?.id) {
+    hidePlanModal();
+    document.getElementById('auth-overlay').classList.remove('hidden');
+    toast('Crea una cuenta primero para suscribirte','ok');
+    return;
+  }
+  const btn = document.querySelector('.btn-upgrade');
+  btn.textContent = 'Redirigiendo...'; btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/stripe/create-checkout`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'omit',
+      body: JSON.stringify({
+        user_id: S.user.id,
+        success_url: window.location.href,
+        cancel_url: window.location.href,
+      })
+    });
+    const d = await r.json();
+    if (d.checkout_url) {
+      window.location.href = d.checkout_url;
+    } else {
+      toast('Error al iniciar el pago. Inténtalo de nuevo.','err');
+    }
+  } catch(e) {
+    toast('Error de conexión con el sistema de pagos','err');
+  } finally {
+    btn.textContent = 'Actualizar a Premium — 9,99€/mes'; btn.disabled = false;
+  }
+}
+
+// Check if returning from successful Stripe payment
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('session_id')) {
+  toast('🎉 ¡Pago completado! Tu cuenta Premium ya está activa.','ok');
+  if (S.user) { S.user.plan = 'premium'; initApp(); }
+  window.history.replaceState({}, '', window.location.pathname);
+}
 
 // ── Toast ────────────────────────────────────────────
 function toast(msg, type='ok') {

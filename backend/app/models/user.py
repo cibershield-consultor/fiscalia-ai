@@ -24,6 +24,7 @@ class User(Base):
     plan_expires_at = Column(DateTime, nullable=True)
     messages_today = Column(Integer, default=0)
     messages_reset_at = Column(DateTime, default=datetime.utcnow)
+    stripe_customer_id = Column(String, nullable=True, unique=True)
     is_active = Column(Boolean, default=True)
     avatar_initials = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
