@@ -1443,7 +1443,7 @@
 
 // Auto-detect: relative URL in production (Docker/nginx), direct in local dev
 const IS_DEV = window.location.hostname === 'localhost' && window.location.port === '8000';
-const API = IS_DEV ? 'http://127.0.0.1:8000/api' : '/api';
+const API = 'https://fiscalia-backend.onrender.com/api';
 
 // ── State ──────────────────────────────────────────────────
 const state = {
