@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+
+  backend:
+    build: ./backend
+    container_name: fiscalia-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist database and uploads outside the container
+      - fiscalia-db:/app/fiscalia.db
+      - fiscalia-uploads:/app/uploads
+    env_file:
+      - ./backend/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: nginx:alpine
+    container_name: fiscalia-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  fiscalia-db:
+  fiscalia-uploads:
