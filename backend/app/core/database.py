@@ -5,23 +5,44 @@ from app.core.config import settings
 
 def get_db_url() -> str:
     url = settings.DATABASE_URL
-    # Convert postgres:// to postgresql+asyncpg:// (Supabase format)
+
+    # Already correctly formatted
+    if "postgresql+asyncpg" in url:
+        if "ssl=require" not in url and "sslmode" not in url:
+            url += "?ssl=require"
+        return url
+
+    # Convert postgres:// or postgresql:// to asyncpg format
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif url.startswith("postgresql://") and "+asyncpg" not in url:
+    elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    # Add SSL if it's a remote PostgreSQL (Supabase, etc.)
+    if "postgresql+asyncpg" in url and "localhost" not in url and "127.0.0.1" not in url:
+        separator = "&" if "?" in url else "?"
+        url += f"{separator}ssl=require"
+
     return url
 
 
-engine = create_async_engine(
-    get_db_url(),
-    echo=False,
-    # PostgreSQL connection pool settings
-    pool_pre_ping=True,       # Test connections before using them
-    pool_recycle=300,         # Recycle connections every 5 minutes
-    pool_size=5,
-    max_overflow=10,
-)
+def is_postgres(url: str) -> bool:
+    return "postgresql" in url or "postgres" in url
+
+
+db_url = get_db_url()
+
+if is_postgres(db_url):
+    engine = create_async_engine(
+        db_url,
+        echo=False,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10,
+    )
+else:
+    engine = create_async_engine(db_url, echo=False)
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
