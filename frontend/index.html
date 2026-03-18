@@ -864,842 +864,592 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 
 <script>
 // ═══════════════════════════════════════════════════
-//  FISCALÍA IA — Frontend v3
+//  FISCALIA IA — Frontend
 // ═══════════════════════════════════════════════════
 
 const API = window.location.hostname === 'localhost'
   ? 'http://127.0.0.1:8000/api'
   : 'https://fiscalia-backend.onrender.com/api';
 
-// ── State ───────────────────────────────────────────
 const S = {
-  user: null,
-  token: null,
+  user: null, token: null,
   sessionId: localStorage.getItem('sid') || crypto.randomUUID(),
-  conversationId: null,
-  conversations: [],
-  loading: false,
-  attachedFile: null,   // {base64, type, name}
-  invoices: [],
-  currentQ: 0,
+  conversationId: null, conversations: [],
+  loading: false, attachedFile: null, invoices: [], currentQ: 0,
 };
 localStorage.setItem('sid', S.sessionId);
 
-// ── Auth ────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────
 function switchAuthTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.querySelectorAll('.auth-tab').forEach((t,i) =>
+    t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
   document.getElementById('tab-login').style.display = tab==='login' ? 'flex' : 'none';
   document.getElementById('tab-register').style.display = tab==='register' ? 'flex' : 'none';
   clearAuthError();
 }
-
-function showAuthError(msg) {
-  const el = document.getElementById('auth-error');
-  el.textContent = msg; el.classList.add('show');
-}
+function showAuthError(msg) { const e=document.getElementById('auth-error'); e.textContent=msg; e.classList.add('show'); }
 function clearAuthError() { document.getElementById('auth-error').classList.remove('show'); }
 
 async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  if (!email || !pass) { showAuthError('Rellena email y contraseña'); return; }
-  const btn = document.getElementById('btn-login');
-  btn.disabled = true; btn.textContent = 'Entrando...';
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  if (!email||!pass){showAuthError('Rellena email y contraseña');return;}
+  const btn=document.getElementById('btn-login');
+  btn.disabled=true; btn.textContent='Entrando...';
   try {
-    const r = await fetch(`${API}/auth/login`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email, password: pass})
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Error al iniciar sesión');
+    const r=await fetch(`${API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Error al iniciar sesión');
     loginSuccess(d);
-  } catch(e) { showAuthError(e.message); }
-  finally { btn.disabled=false; btn.textContent='Entrar'; }
+  } catch(e){showAuthError(e.message);}
+  finally{btn.disabled=false;btn.textContent='Entrar';}
 }
 
 async function doRegister() {
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pass = document.getElementById('reg-pass').value;
-  if (!email || !pass) { showAuthError('Rellena email y contraseña'); return; }
-  if (pass.length < 6) { showAuthError('La contraseña debe tener mínimo 6 caracteres'); return; }
-  const btn = document.getElementById('btn-register');
+  const name=document.getElementById('reg-name').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pass=document.getElementById('reg-pass').value;
+  if(!email||!pass){showAuthError('Rellena email y contraseña');return;}
+  if(pass.length<6){showAuthError('La contraseña debe tener mínimo 6 caracteres');return;}
+  const btn=document.getElementById('btn-register');
   btn.disabled=true; btn.textContent='Creando cuenta...';
   try {
-    const r = await fetch(`${API}/auth/register`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email, password:pass, full_name:name||null})
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Error al registrarse');
+    const r=await fetch(`${API}/auth/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,full_name:name||null})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.detail||'Error al registrarse');
     loginSuccess(d);
-  } catch(e) { showAuthError(e.message); }
-  finally { btn.disabled=false; btn.textContent='Crear cuenta gratis'; }
+    if(d.trial_message) setTimeout(()=>toast(d.trial_message,'ok'),500);
+  } catch(e){showAuthError(e.message);}
+  finally{btn.disabled=false;btn.textContent='Crear cuenta gratis';}
 }
 
 function loginSuccess(data) {
-  S.token = data.access_token;
-  S.user = data.user;
-  localStorage.setItem('token', S.token);
-  localStorage.setItem('user', JSON.stringify(S.user));
+  S.token=data.access_token; S.user=data.user;
+  localStorage.setItem('token',S.token);
+  localStorage.setItem('user',JSON.stringify(S.user));
   document.getElementById('auth-overlay').classList.add('hidden');
   initApp();
 }
 
 function continueAsGuest() {
-  S.user = { id: null, full_name: 'Invitado', plan: 'free', messages_today: 0, avatar_initials: 'IN' };
+  S.user={id:null,full_name:'Invitado',plan:'free',messages_today:0,avatar_initials:'IN'};
   document.getElementById('auth-overlay').classList.add('hidden');
   initApp();
 }
 
 function initApp() {
-  // Show trial banner if applicable
-  if (S.user?.plan === 'premium' && S.user?.plan_expires_at) {
-    const banner = document.getElementById('trial-banner');
-    const expiresAt = new Date(S.user.plan_expires_at);
-    const daysLeft = Math.ceil((expiresAt - new Date()) / (1000*60*60*24));
-    if (daysLeft > 0) {
-      banner.classList.remove('hidden');
-      document.getElementById('trial-days-left').textContent = `Quedan ${daysLeft} día${daysLeft!==1?'s':''}.`;
-    }
+  const name=S.user?.full_name||S.user?.email||'Invitado';
+  const initials=S.user?.avatar_initials||name.slice(0,2).toUpperCase();
+  const plan=S.user?.plan||'free';
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-name-display').textContent=name;
+  document.getElementById('user-plan-display').textContent=plan==='premium'?'⭐ Premium':'Plan Gratuito';
+  document.getElementById('user-plan-display').className='user-plan'+(plan==='premium'?' premium':'');
+  const chip=document.getElementById('plan-chip');
+  chip.textContent=plan==='premium'?'⭐ Premium':'⭐ Plan Gratuito';
+  chip.className='chip '+(plan==='premium'?'chip-plan-premium':'chip-plan-free');
+  document.getElementById('dash-lock').style.display=plan==='premium'?'none':'';
+  if(plan==='free') { document.getElementById('limit-section').style.display='block'; updateLimitBar(); }
+  if(S.user?.plan==='premium'&&S.user?.plan_expires_at){
+    const banner=document.getElementById('trial-banner');
+    const exp=new Date(S.user.plan_expires_at);
+    const days=Math.ceil((exp-new Date())/(1000*60*60*24));
+    if(days>0){ banner.classList.remove('hidden'); document.getElementById('trial-days-left').textContent=`Quedan ${days} día${days!==1?'s':''}.`; }
   }
-
-  // Update UI with user info
-  const name = S.user?.full_name || S.user?.email || 'Invitado';
-  const initials = S.user?.avatar_initials || name.slice(0,2).toUpperCase();
-  const plan = S.user?.plan || 'free';
-
-  document.getElementById('user-avatar').textContent = initials;
-  document.getElementById('user-name-display').textContent = name;
-  document.getElementById('user-plan-display').textContent = plan === 'premium' ? '⭐ Premium' : 'Plan Gratuito';
-  document.getElementById('user-plan-display').className = 'user-plan' + (plan==='premium'?' premium':'');
-
-  const chip = document.getElementById('plan-chip');
-  chip.textContent = plan === 'premium' ? '⭐ Premium' : '⭐ Plan Gratuito';
-  chip.className = 'chip ' + (plan==='premium' ? 'chip-plan-premium' : 'chip-plan-free');
-
-  // Dashboard lock
-  const dashLock = document.getElementById('dash-lock');
-  if (plan === 'premium') dashLock.style.display = 'none';
-
-  // Usage bar
-  if (plan === 'free') {
-    document.getElementById('limit-section').style.display = 'block';
-    updateLimitBar();
-  }
-
   loadConversations();
-  document.getElementById('dash-year').textContent = new Date().getFullYear();
-  document.getElementById('inv-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('dash-year').textContent=new Date().getFullYear();
+  document.getElementById('inv-fecha').value=new Date().toISOString().split('T')[0];
 }
 
 function updateLimitBar() {
-  const used = S.user?.messages_today || 0;
-  const max = 10;
-  const pct = Math.min(100, used/max*100);
-  document.getElementById('limit-label').textContent = `${used}/${max} mensajes hoy`;
-  const fill = document.getElementById('limit-fill');
-  fill.style.width = pct + '%';
-  fill.className = 'limit-fill' + (pct >= 80 ? ' low' : '');
+  const used=S.user?.messages_today||0,max=10,pct=Math.min(100,used/max*100);
+  document.getElementById('limit-label').textContent=`${used}/${max} mensajes hoy`;
+  const fill=document.getElementById('limit-fill');
+  fill.style.width=pct+'%';
+  fill.className='limit-fill'+(pct>=80?' low':'');
 }
 
-// Auto-login if token exists
-window.addEventListener('DOMContentLoaded', () => {
-  const savedToken = localStorage.getItem('token');
-  const savedUser = localStorage.getItem('user');
-  if (savedToken && savedUser) {
-    S.token = savedToken;
-    S.user = JSON.parse(savedUser);
-    document.getElementById('auth-overlay').classList.add('hidden');
-    initApp();
-  }
-
-  // Enter key in auth inputs
-  document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-  document.getElementById('reg-pass').addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+window.addEventListener('DOMContentLoaded',()=>{
+  const t=localStorage.getItem('token'),u=localStorage.getItem('user');
+  if(t&&u){S.token=t;S.user=JSON.parse(u);document.getElementById('auth-overlay').classList.add('hidden');initApp();}
+  document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  document.getElementById('reg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
 });
 
-// ── Views ────────────────────────────────────────────
-const viewTitles = {
-  chat: '<strong>Chat</strong> con IA fiscal',
-  dashboard: '<strong>Dashboard</strong> financiero',
-  invoices: '<strong>Gestión</strong> de facturas',
+// ── Views ─────────────────────────────────────────────
+const viewTitles={
+  chat:'<strong>Chat</strong> con IA fiscal',
+  dashboard:'<strong>Dashboard</strong> financiero',
+  invoices:'<strong>Gestión</strong> de facturas',
+  spreadsheets:'<strong>Excel</strong> / CSV',
 };
 
 function showView(name) {
-  if (name === 'dashboard' && S.user?.plan !== 'premium') {
-    showPlanModal(); return;
-  }
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('view-' + name).classList.add('active');
-  document.getElementById('nav-' + name)?.classList.add('active');
-  document.getElementById('topbar-title').innerHTML = viewTitles[name] || name;
-  if (name === 'dashboard') loadDashboard();
-  if (name === 'invoices') loadInvoices();
+  if(name==='dashboard'&&S.user?.plan!=='premium'){showPlanModal();return;}
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  document.getElementById('topbar-title').innerHTML=viewTitles[name]||name;
+  if(name==='dashboard')loadDashboard();
+  if(name==='invoices')loadInvoices();
 }
 
-// ── Chat ─────────────────────────────────────────────
-function handleInputKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
-}
+// ── Chat ──────────────────────────────────────────────
+function handleInputKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px';}
 
 async function sendMessage() {
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if ((!text && !S.attachedFile) || S.loading) return;
-
-  // Check daily limit for free users
-  if (S.user?.plan === 'free' && (S.user?.messages_today || 0) >= 10 && !S.user?.id) {
-    showPlanModal(); return;
-  }
-
-  const welcome = document.getElementById('chat-welcome');
-  if (welcome) welcome.style.display = 'none';
-
-  appendMsg('user', text, S.attachedFile);
-  const file = S.attachedFile;
-  removeFile();
-  input.value = ''; input.style.height = 'auto';
-  showTyping();
-  setLoading(true);
-
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if((!text&&!S.attachedFile)||S.loading)return;
+  if(S.user?.plan==='free'&&(S.user?.messages_today||0)>=10&&!S.user?.id){showPlanModal();return;}
+  const welcome=document.getElementById('chat-welcome');
+  if(welcome)welcome.style.display='none';
+  appendMsg('user',text,S.attachedFile);
+  const file=S.attachedFile; removeFile();
+  input.value='';input.style.height='auto';
+  showTyping(); setLoading(true);
   try {
-    const body = {
-      message: text,
-      session_id: S.sessionId,
-      conversation_id: S.conversationId || null,
-      user_id: S.user?.id || null,
-    };
-    if (file) {
-      body.file_base64 = file.base64;
-      body.file_type = file.type;
-      body.file_name = file.name;
-    }
-
-    const r = await fetch(`${API}/chat/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(S.token ? {'Authorization': `Bearer ${S.token}`} : {}) },
-      credentials: 'omit',
-      body: JSON.stringify(body),
+    const body={message:text,session_id:S.sessionId,conversation_id:S.conversationId||null,user_id:S.user?.id||null};
+    if(file){body.file_base64=file.base64;body.file_type=file.type;body.file_name=file.name;}
+    const r=await fetch(`${API}/chat/`,{
+      method:'POST',headers:{'Content-Type':'application/json',...(S.token?{'Authorization':`Bearer ${S.token}`}:{})},
+      credentials:'omit',body:JSON.stringify(body),
     });
-
-    const rawText = await r.text();
+    const rawText=await r.text();
     let data;
-    try { data = JSON.parse(rawText); } catch {
-      throw new Error(`Respuesta inválida del servidor (${r.status}): ${rawText.slice(0,200)}`);
-    }
-    if (!r.ok) throw new Error(data?.detail || `Error ${r.status}`);
-
-    S.conversationId = data.conversation_id;
-    removeTyping();
-    appendMsg('assistant', data.answer);
-
-    // Update usage count
-    if (S.user) {
-      S.user.messages_today = (S.user.messages_today || 0) + 1;
-      updateLimitBar();
-    }
-
-    // Refresh conversation list
-    setTimeout(loadConversations, 500);
-
-  } catch(e) {
-    removeTyping();
-    appendMsg('assistant', `⚠️ **Error:** ${e.message}`);
-  } finally {
-    setLoading(false);
-  }
+    try{data=JSON.parse(rawText);}catch{throw new Error(`Respuesta inválida (${r.status}): ${rawText.slice(0,200)}`);}
+    if(!r.ok)throw new Error(data?.detail||`Error ${r.status}`);
+    S.conversationId=data.conversation_id;
+    removeTyping(); appendMsg('assistant',data.answer);
+    if(S.user){S.user.messages_today=(S.user.messages_today||0)+1;updateLimitBar();}
+    setTimeout(loadConversations,500);
+  } catch(e){removeTyping();appendMsg('assistant',`⚠️ **Error:** ${e.message}`);}
+  finally{setLoading(false);}
 }
 
-function sendQuick(text) {
-  document.getElementById('chat-input').value = text;
-  sendMessage();
+function sendQuick(text){document.getElementById('chat-input').value=text;sendMessage();}
+function quickAsk(text){showView('chat');setTimeout(()=>sendQuick(text),50);}
+
+function appendMsg(role,text,file=null){
+  const container=document.getElementById('chat-messages');
+  let inner=container.querySelector('.chat-messages-inner');
+  if(!inner){inner=document.createElement('div');inner.className='chat-messages-inner';container.appendChild(inner);}
+  const initials=S.user?.avatar_initials||'?';
+  const div=document.createElement('div');div.className='msg-group';
+  div.innerHTML=`<div class="msg ${role}"><div class="msg-avatar">${role==='user'?initials:'⚖️'}</div><div class="msg-bubble">${file&&role==='user'?`<div class="msg-file-preview">📎 ${file.name}</div>`:''} ${renderMd(text)}</div></div>`;
+  inner.appendChild(div);container.scrollTop=container.scrollHeight;
 }
 
-function quickAsk(text) {
+function showTyping(){
+  const container=document.getElementById('chat-messages');
+  const inner=container.querySelector('.chat-messages-inner')||container;
+  const div=document.createElement('div');div.className='msg-group typing-msg';div.id='typing';
+  div.innerHTML=`<div class="msg assistant"><div class="msg-avatar">⚖️</div><div class="msg-bubble"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div>`;
+  inner.appendChild(div);container.scrollTop=container.scrollHeight;
+}
+function removeTyping(){document.getElementById('typing')?.remove();}
+function setLoading(v){S.loading=v;document.getElementById('send-btn').disabled=v;}
+
+function newChat(){
+  S.conversationId=null;
+  const container=document.getElementById('chat-messages');
+  const inner=container.querySelector('.chat-messages-inner');
+  if(inner){inner.innerHTML=`<div class="chat-welcome" id="chat-welcome"><span class="welcome-glyph">⚖️</span><h2 class="welcome-h">Tu asesor fiscal <em>inteligente</em></h2><p class="welcome-p">Especializado en autónomos españoles. Actualizado con la normativa 2025-2026.</p><div class="quick-grid"><button class="quick-btn" onclick="sendQuick('¿Qué novedades fiscales hay para autónomos en 2026?')"><span class="qb-icon">🆕</span><span class="qb-text">Novedades 2026</span></button><button class="quick-btn" onclick="sendQuick('¿Cuánto pagaré de IRPF si gano 45.000€?')"><span class="qb-icon">📊</span><span class="qb-text">Calcular IRPF</span></button><button class="quick-btn" onclick="sendQuick('¿Qué gastos puedo deducir trabajando desde casa?')"><span class="qb-icon">🏠</span><span class="qb-text">Deducciones en casa</span></button><button class="quick-btn" onclick="sendQuick('Cuota autónomo 2026 por ingresos reales')"><span class="qb-icon">💶</span><span class="qb-text">Cuota autónomo</span></button></div></div>`;}
   showView('chat');
-  setTimeout(() => sendQuick(text), 50);
+  document.querySelectorAll('.conv-item').forEach(c=>c.classList.remove('active'));
 }
 
-function appendMsg(role, text, file = null) {
-  const container = document.getElementById('chat-messages');
-  let inner = container.querySelector('.chat-messages-inner');
-  if (!inner) {
-    inner = document.createElement('div');
-    inner.className = 'chat-messages-inner';
-    container.appendChild(inner);
-  }
-
-  const initials = S.user?.avatar_initials || '?';
-  const div = document.createElement('div');
-  div.className = 'msg-group';
-  div.innerHTML = `
-    <div class="msg ${role}">
-      <div class="msg-avatar">${role === 'user' ? initials : '⚖️'}</div>
-      <div class="msg-bubble">
-        ${file && role === 'user' ? `<div class="msg-file-preview">📎 ${file.name}</div>` : ''}
-        ${renderMd(text)}
-      </div>
-    </div>`;
-  inner.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+// ── Conversations ─────────────────────────────────────
+async function loadConversations(){
+  try{
+    const params=S.user?.id?`user_id=${S.user.id}`:`session_id=${S.sessionId}`;
+    const r=await fetch(`${API}/chat/conversations?${params}`,{credentials:'omit'});
+    if(!r.ok)return;
+    S.conversations=await r.json(); renderConvList();
+  }catch{}
 }
 
-function showTyping() {
-  const container = document.getElementById('chat-messages');
-  const inner = container.querySelector('.chat-messages-inner') || container;
-  const div = document.createElement('div');
-  div.className = 'msg-group typing-msg'; div.id = 'typing';
-  div.innerHTML = `<div class="msg assistant"><div class="msg-avatar">⚖️</div><div class="msg-bubble"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div>`;
-  inner.appendChild(div);
-  container.scrollTop = container.scrollHeight;
+function renderConvList(){
+  const list=document.getElementById('conv-list');
+  const label=document.getElementById('conv-section-label');
+  if(!S.conversations.length){list.innerHTML='';label.style.display='none';return;}
+  label.style.display='block';
+  list.innerHTML=S.conversations.slice(0,20).map(c=>`<div class="conv-item ${c.id===S.conversationId?'active':''}" onclick="loadConv(${c.id})" data-id="${c.id}"><span class="conv-title">${escHtml(c.title||'Conversación')}</span><button class="conv-delete" onclick="deleteConv(event,${c.id})">🗑</button></div>`).join('');
 }
 
-function removeTyping() { document.getElementById('typing')?.remove(); }
-function setLoading(v) { S.loading = v; document.getElementById('send-btn').disabled = v; }
-
-function newChat() {
-  S.conversationId = null;
-  const container = document.getElementById('chat-messages');
-  const inner = container.querySelector('.chat-messages-inner');
-  if (inner) {
-    inner.innerHTML = `<div class="chat-welcome" id="chat-welcome">
-      <span class="welcome-glyph">⚖️</span>
-      <h2 class="welcome-h">Tu asesor fiscal <em>inteligente</em></h2>
-      <p class="welcome-p">Especializado en autónomos españoles. Actualizado con la normativa 2025-2026.</p>
-      <div class="quick-grid">
-        <button class="quick-btn" onclick="sendQuick('¿Qué novedades fiscales hay para autónomos en 2026?')"><span class="qb-icon">🆕</span><span class="qb-text">Novedades 2026</span></button>
-        <button class="quick-btn" onclick="sendQuick('¿Cuánto pagaré de IRPF si gano 45.000€?')"><span class="qb-icon">📊</span><span class="qb-text">Calcular IRPF</span></button>
-        <button class="quick-btn" onclick="sendQuick('¿Qué gastos puedo deducir trabajando desde casa?')"><span class="qb-icon">🏠</span><span class="qb-text">Deducciones en casa</span></button>
-        <button class="quick-btn" onclick="sendQuick('Cuota autónomo 2026 por ingresos reales')"><span class="qb-icon">💶</span><span class="qb-text">Cuota autónomo</span></button>
-      </div>
-    </div>`;
-  }
-  showView('chat');
-  document.querySelectorAll('.conv-item').forEach(c => c.classList.remove('active'));
-}
-
-// ── Conversations ────────────────────────────────────
-async function loadConversations() {
-  try {
-    const params = S.user?.id ? `user_id=${S.user.id}` : `session_id=${S.sessionId}`;
-    const r = await fetch(`${API}/chat/conversations?${params}`, { credentials:'omit' });
-    if (!r.ok) return;
-    S.conversations = await r.json();
-    renderConvList();
-  } catch {}
-}
-
-function renderConvList() {
-  const list = document.getElementById('conv-list');
-  const label = document.getElementById('conv-section-label');
-  if (!S.conversations.length) { list.innerHTML=''; label.style.display='none'; return; }
-  label.style.display = 'block';
-  list.innerHTML = S.conversations.slice(0, 20).map(c => `
-    <div class="conv-item ${c.id===S.conversationId?'active':''}" onclick="loadConv(${c.id})" data-id="${c.id}">
-      <span class="conv-title">${escHtml(c.title || 'Conversación')}</span>
-      <button class="conv-delete" onclick="deleteConv(event,${c.id})">🗑</button>
-    </div>`).join('');
-}
-
-async function loadConv(id) {
-  S.conversationId = id;
-  try {
-    const r = await fetch(`${API}/chat/history/${id}`, {credentials:'omit'});
-    if (!r.ok) return;
-    const msgs = await r.json();
-    const container = document.getElementById('chat-messages');
-    let inner = container.querySelector('.chat-messages-inner');
-    if (!inner) { inner = document.createElement('div'); inner.className='chat-messages-inner'; container.appendChild(inner); }
-    inner.innerHTML = '';
-    msgs.forEach(m => appendMsg(m.role, m.content));
-    document.querySelectorAll('.conv-item').forEach(c => c.classList.toggle('active', +c.dataset.id === id));
+async function loadConv(id){
+  S.conversationId=id;
+  try{
+    const r=await fetch(`${API}/chat/history/${id}`,{credentials:'omit'});
+    if(!r.ok)return;
+    const msgs=await r.json();
+    const container=document.getElementById('chat-messages');
+    let inner=container.querySelector('.chat-messages-inner');
+    if(!inner){inner=document.createElement('div');inner.className='chat-messages-inner';container.appendChild(inner);}
+    inner.innerHTML='';
+    msgs.forEach(m=>appendMsg(m.role,m.content));
+    document.querySelectorAll('.conv-item').forEach(c=>c.classList.toggle('active',+c.dataset.id===id));
     showView('chat');
-  } catch {}
+  }catch{}
 }
 
-async function deleteConv(e, id) {
+async function deleteConv(e,id){
   e.stopPropagation();
-  try {
-    await fetch(`${API}/chat/conversations/${id}`, {method:'DELETE',credentials:'omit'});
-    if (S.conversationId === id) newChat();
-    loadConversations();
-  } catch {}
+  try{await fetch(`${API}/chat/conversations/${id}`,{method:'DELETE',credentials:'omit'});if(S.conversationId===id)newChat();loadConversations();}catch{}
 }
 
-// ── File Attachment ──────────────────────────────────
-function triggerFileUpload() {
-  if (S.user?.plan !== 'premium' && S.user?.id) {
-    showPlanModal(); return;
-  }
+// ── File Attachment ───────────────────────────────────
+function triggerFileUpload(){
+  if(S.user?.plan!=='premium'&&S.user?.id){showPlanModal();return;}
   document.getElementById('file-input').click();
 }
+function handleFileSelect(e){const f=e.target.files[0];if(f)processFile(f);}
+function handleInvDrop(e){e.preventDefault();document.getElementById('upload-drop').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleInvFileData(f);}
+function handleInvFile(e){handleInvFileData(e.target.files[0]);}
+function handleInvFileData(file){toast(`📎 ${file.name} cargado`,'ok');toggleInvForm();}
 
-function handleFileSelect(e) {
-  const file = e.target.files[0];
-  if (file) processFile(file);
-}
-
-function handleInvDrop(e) {
-  e.preventDefault();
-  document.getElementById('upload-drop').classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  if (file) { handleInvFileData(file); }
-}
-
-function handleInvFile(e) { handleInvFileData(e.target.files[0]); }
-function handleInvFileData(file) {
-  toast(`📎 ${file.name} cargado`, 'ok');
-  toggleInvForm();
-}
-
-async function processFile(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result.split(',')[1];
-    S.attachedFile = { base64, type: file.type, name: file.name };
-    const bar = document.getElementById('file-preview-bar');
+async function processFile(file){
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    const base64=e.target.result.split(',')[1];
+    S.attachedFile={base64,type:file.type,name:file.name};
+    const bar=document.getElementById('file-preview-bar');
     bar.classList.add('show');
-    document.getElementById('file-preview-content').textContent = `📎 ${file.name}`;
-    if (file.type.startsWith('image/')) {
-      const img = document.createElement('img');
-      img.src = e.target.result; img.className='file-preview-img';
-      bar.insertBefore(img, bar.firstChild);
-    }
+    document.getElementById('file-preview-content').textContent=`📎 ${file.name}`;
   };
   reader.readAsDataURL(file);
 }
 
-function removeFile() {
-  S.attachedFile = null;
+function removeFile(){
+  S.attachedFile=null;
   document.getElementById('file-preview-bar').classList.remove('show');
-  document.getElementById('file-preview-bar').innerHTML = `<span id="file-preview-content">📎 archivo</span><button class="file-preview-remove" onclick="removeFile()">✕</button>`;
-  document.getElementById('file-input').value = '';
+  document.getElementById('file-preview-bar').innerHTML=`<span id="file-preview-content">📎 archivo</span><button class="file-preview-remove" onclick="removeFile()">✕</button>`;
+  document.getElementById('file-input').value='';
 }
 
 // ── Dashboard ─────────────────────────────────────────
-let currentQ = 0;
-function setQ(q, btn) {
-  currentQ = q;
-  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  loadDashboard();
+let currentQ=0;
+function setQ(q,btn){currentQ=q;document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadDashboard();}
+
+async function loadDashboard(){
+  const yr=new Date().getFullYear();
+  const q=currentQ>0?`&trimestre=${currentQ}`:'';
+  try{const r=await fetch(`${API}/analysis/summary?año=${yr}${q}`,{credentials:'omit'});if(!r.ok)throw new Error();renderDash(await r.json());}
+  catch{renderDash({ingresos:0,gastos:0,beneficio:0,margen_pct:0,gastos_deducibles:0,iva_a_pagar:0,irpf_estimado:0,irpf_retenido:0,diferencia_irpf:0,num_transacciones:0,meses:{},categorias:{},insights:['💡 Añade transacciones para ver tu análisis fiscal','📊 El dashboard calcula IVA e IRPF automáticamente']});}
 }
 
-async function loadDashboard() {
-  const yr = new Date().getFullYear();
-  const q = currentQ > 0 ? `&trimestre=${currentQ}` : '';
-  try {
-    const r = await fetch(`${API}/analysis/summary?año=${yr}${q}`, {credentials:'omit'});
-    if (!r.ok) throw new Error();
-    renderDash(await r.json());
-  } catch { renderDash(getDemoData()); }
-}
-
-function getDemoData() {
-  return { ingresos:0,gastos:0,beneficio:0,margen_pct:0,gastos_deducibles:0,
-    iva_a_pagar:0,irpf_estimado:0,irpf_retenido:0,diferencia_irpf:0,
-    num_transacciones:0,meses:{},categorias:{},
-    insights:['💡 Añade transacciones para ver tu análisis fiscal','📊 El dashboard calcula IVA e IRPF automáticamente','🧾 Sube facturas para clasificación con IA'] };
-}
-
-function renderDash(d) {
-  const f = n => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n||0);
-  document.getElementById('kpi-in').textContent = f(d.ingresos);
-  document.getElementById('kpi-out').textContent = f(d.gastos);
-  document.getElementById('kpi-net').textContent = f(d.beneficio);
-  document.getElementById('kpi-tax').textContent = f(d.iva_a_pagar);
-  document.getElementById('kpi-in-sub').textContent = `${d.num_transacciones||0} ingresos`;
-  document.getElementById('kpi-out-sub').textContent = `Deducibles: ${f(d.gastos_deducibles)}`;
-  document.getElementById('kpi-net-sub').textContent = `Margen: ${(d.margen_pct||0).toFixed(1)}%`;
-  document.getElementById('kpi-tax-sub').textContent = `IRPF est.: ${f(d.irpf_estimado)}`;
-  document.getElementById('ts-base').textContent = f(d.ingresos);
-  document.getElementById('ts-iva-s').textContent = f((d.gastos_deducibles||0)*0.21);
-  document.getElementById('ts-iva-p').textContent = f(d.iva_a_pagar);
-  document.getElementById('ts-ret').textContent = f(d.irpf_retenido);
-  document.getElementById('ts-irpf').textContent = f(d.irpf_estimado);
-  const diff = d.diferencia_irpf||0;
-  const diffEl = document.getElementById('ts-diff');
-  diffEl.textContent = (diff>=0?'+':'')+f(diff);
-  diffEl.className = 'tax-val '+(diff>=0?'neg':'pos');
+function renderDash(d){
+  const f=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n||0);
+  document.getElementById('kpi-in').textContent=f(d.ingresos);
+  document.getElementById('kpi-out').textContent=f(d.gastos);
+  document.getElementById('kpi-net').textContent=f(d.beneficio);
+  document.getElementById('kpi-tax').textContent=f(d.iva_a_pagar);
+  document.getElementById('kpi-in-sub').textContent=`${d.num_transacciones||0} ingresos`;
+  document.getElementById('kpi-out-sub').textContent=`Deducibles: ${f(d.gastos_deducibles)}`;
+  document.getElementById('kpi-net-sub').textContent=`Margen: ${(d.margen_pct||0).toFixed(1)}%`;
+  document.getElementById('kpi-tax-sub').textContent=`IRPF est.: ${f(d.irpf_estimado)}`;
+  document.getElementById('ts-base').textContent=f(d.ingresos);
+  document.getElementById('ts-iva-s').textContent=f((d.gastos_deducibles||0)*0.21);
+  document.getElementById('ts-iva-p').textContent=f(d.iva_a_pagar);
+  document.getElementById('ts-ret').textContent=f(d.irpf_retenido);
+  document.getElementById('ts-irpf').textContent=f(d.irpf_estimado);
+  const diff=d.diferencia_irpf||0;
+  const diffEl=document.getElementById('ts-diff');
+  diffEl.textContent=(diff>=0?'+':'')+f(diff);
+  diffEl.className='tax-val '+(diff>=0?'neg':'pos');
   renderBarChart(d.meses||{});
-  const ins = document.getElementById('insights');
-  const icons = ['💡','📊','⚠️','✅','🎯'];
-  ins.innerHTML = (d.insights||[]).map((s,i)=>`<div class="insight"><span class="insight-ico">${icons[i%icons.length]}</span>${s}</div>`).join('');
-  const cats = document.getElementById('cat-breakdown');
-  const catData = d.categorias||{};
-  if (Object.keys(catData).length===0) { cats.innerHTML='<div style="color:var(--text2);font-size:.82rem">Añade facturas para ver el desglose</div>'; return; }
-  cats.innerHTML = `<div class="tax-table">${Object.entries(catData).map(([k,v])=>`<div class="tax-row"><span class="tax-lbl">${k.replace(/_/g,' ')}</span><span class="tax-val">${f(v.gastos||v.ingresos||0)}</span></div>`).join('')}</div>`;
+  const ins=document.getElementById('insights');
+  const icons=['💡','📊','⚠️','✅','🎯'];
+  ins.innerHTML=(d.insights||[]).map((s,i)=>`<div class="insight"><span class="insight-ico">${icons[i%icons.length]}</span>${s}</div>`).join('');
+  const cats=d.categorias||{};
+  const catsEl=document.getElementById('cat-breakdown');
+  if(!Object.keys(cats).length){catsEl.innerHTML='<div style="color:var(--text2);font-size:.82rem">Añade facturas para ver el desglose</div>';return;}
+  catsEl.innerHTML=`<div class="tax-table">${Object.entries(cats).map(([k,v])=>`<div class="tax-row"><span class="tax-lbl">${k.replace(/_/g,' ')}</span><span class="tax-val">${f(v.gastos||v.ingresos||0)}</span></div>`).join('')}</div>`;
 }
 
-function renderBarChart(meses) {
-  const chart = document.getElementById('bar-chart');
-  const labels = document.getElementById('bar-labels');
-  const keys = Object.keys(meses).sort();
-  if (!keys.length) { chart.innerHTML='<div style="color:var(--text3);font-size:.82rem;flex:1;display:flex;align-items:center;justify-content:center">Añade transacciones para ver el gráfico</div>'; labels.innerHTML=''; return; }
-  const max = Math.max(...keys.map(k=>Math.max(meses[k].ingresos||0,meses[k].gastos||0)),1);
-  chart.innerHTML = keys.map(k=>`<div class="bar-grp"><div class="bar b-in" style="height:${(meses[k].ingresos||0)/max*100}%"></div><div class="bar b-out" style="height:${(meses[k].gastos||0)/max*100}%"></div></div>`).join('');
-  labels.innerHTML = keys.map(k=>`<div class="bar-lbl">${k.slice(5)}</div>`).join('');
+function renderBarChart(meses){
+  const chart=document.getElementById('bar-chart');
+  const labels=document.getElementById('bar-labels');
+  const keys=Object.keys(meses).sort();
+  if(!keys.length){chart.innerHTML='<div style="color:var(--text3);font-size:.82rem;flex:1;display:flex;align-items:center;justify-content:center">Añade transacciones para ver el gráfico</div>';labels.innerHTML='';return;}
+  const max=Math.max(...keys.map(k=>Math.max(meses[k].ingresos||0,meses[k].gastos||0)),1);
+  chart.innerHTML=keys.map(k=>`<div class="bar-grp"><div class="bar b-in" style="height:${(meses[k].ingresos||0)/max*100}%"></div><div class="bar b-out" style="height:${(meses[k].gastos||0)/max*100}%"></div></div>`).join('');
+  labels.innerHTML=keys.map(k=>`<div class="bar-lbl">${k.slice(5)}</div>`).join('');
 }
 
 // ── Invoices ──────────────────────────────────────────
-function toggleInvForm() { document.getElementById('inv-form').classList.toggle('open'); }
+function toggleInvForm(){document.getElementById('inv-form').classList.toggle('open');}
 
-async function submitInvoice() {
-  const fd = new FormData();
-  fd.append('tipo', document.getElementById('inv-tipo').value);
-  fd.append('emisor', document.getElementById('inv-emisor').value);
-  fd.append('concepto', document.getElementById('inv-concepto').value);
-  fd.append('base_imponible', document.getElementById('inv-base').value||'0');
-  fd.append('tipo_iva', document.getElementById('inv-iva').value);
-  fd.append('fecha', document.getElementById('inv-fecha').value);
-  try {
-    const r = await fetch(`${API}/invoices/`, {method:'POST',body:fd,credentials:'omit'});
-    if (!r.ok) throw new Error();
-    const d = await r.json();
-    toast(`✅ Factura guardada · Categoría IA: ${d.clasificacion_ia?.categoria||'otros'}`, 'ok');
-    toggleInvForm(); loadInvoices();
-  } catch { toast('❌ Error al guardar la factura','err'); }
+async function submitInvoice(){
+  const fd=new FormData();
+  fd.append('tipo',document.getElementById('inv-tipo').value);
+  fd.append('emisor',document.getElementById('inv-emisor').value);
+  fd.append('concepto',document.getElementById('inv-concepto').value);
+  fd.append('base_imponible',document.getElementById('inv-base').value||'0');
+  fd.append('tipo_iva',document.getElementById('inv-iva').value);
+  fd.append('fecha',document.getElementById('inv-fecha').value);
+  try{
+    const r=await fetch(`${API}/invoices/`,{method:'POST',body:fd,credentials:'omit'});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    toast(`✅ Factura guardada · Categoría IA: ${d.clasificacion_ia?.categoria||'otros'}`,'ok');
+    toggleInvForm();loadInvoices();
+  }catch{toast('❌ Error al guardar la factura','err');}
 }
 
-async function loadInvoices() {
-  try {
-    const r = await fetch(`${API}/invoices/`,{credentials:'omit'});
-    if (!r.ok) return;
-    S.invoices = await r.json();
-    renderInvTable(S.invoices);
-  } catch { renderInvTable([]); }
+async function loadInvoices(){
+  try{const r=await fetch(`${API}/invoices/`,{credentials:'omit'});if(!r.ok)return;S.invoices=await r.json();renderInvTable(S.invoices);}
+  catch{renderInvTable([]);}
 }
 
-function filterInv(tipo,btn) {
-  document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+function filterInv(tipo,btn){
+  document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   renderInvTable(tipo==='all'?S.invoices:S.invoices.filter(i=>i.tipo===tipo));
 }
 
-function renderInvTable(list) {
-  const el = document.getElementById('inv-table');
-  if (!list.length) { el.innerHTML=`<div class="empty-state"><span class="empty-icon">🧾</span><h3>Sin facturas</h3><p>Añade tu primera factura</p></div>`; return; }
-  const f = n => new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n||0);
-  el.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Emisor</th><th>Base</th><th>IVA</th><th>Total</th><th>Categoría IA</th><th>Deducible</th><th></th></tr></thead><tbody>
-  ${list.map(i=>`<tr>
-    <td>${i.fecha?new Date(i.fecha).toLocaleDateString('es-ES'):'—'}</td>
-    <td><span class="badge ${i.tipo==='ingreso'?'b-in':'b-out'}">${i.tipo}</span></td>
-    <td><div style="font-weight:500">${escHtml(i.emisor||'—')}</div><div style="font-size:.74rem;color:var(--text3)">${escHtml(i.concepto||'')}</div></td>
-    <td>${f(i.base_imponible)}</td><td>${i.tipo_iva}%</td>
-    <td style="font-weight:600">${f(i.total)}</td>
-    <td><span class="badge b-cat">${i.categoria||'—'}</span></td>
-    <td>${i.deducible?'<span class="badge b-ded">✓ Sí</span>':'<span style="color:var(--text3);font-size:.75rem">No</span>'}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="delInv(${i.id})">🗑</button></td>
-  </tr>`).join('')}
-  </tbody></table>`;
+function renderInvTable(list){
+  const el=document.getElementById('inv-table');
+  if(!list.length){el.innerHTML=`<div class="empty-state"><span class="empty-icon">🧾</span><h3>Sin facturas</h3><p>Añade tu primera factura</p></div>`;return;}
+  const f=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n||0);
+  el.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Emisor</th><th>Base</th><th>IVA</th><th>Total</th><th>Categoría IA</th><th>Deducible</th><th></th></tr></thead><tbody>${list.map(i=>`<tr><td>${i.fecha?new Date(i.fecha).toLocaleDateString('es-ES'):'—'}</td><td><span class="badge ${i.tipo==='ingreso'?'b-in':'b-out'}">${i.tipo}</span></td><td><div style="font-weight:500">${escHtml(i.emisor||'—')}</div><div style="font-size:.74rem;color:var(--text3)">${escHtml(i.concepto||'')}</div></td><td>${f(i.base_imponible)}</td><td>${i.tipo_iva}%</td><td style="font-weight:600">${f(i.total)}</td><td><span class="badge b-cat">${i.categoria||'—'}</span></td><td>${i.deducible?'<span class="badge b-ded">✓ Sí</span>':'<span style="color:var(--text3);font-size:.75rem">No</span>'}</td><td><button class="btn btn-danger btn-sm" onclick="delInv(${i.id})">🗑</button></td></tr>`).join('')}</tbody></table>`;
 }
 
-async function delInv(id) {
-  if (!confirm('¿Eliminar factura?')) return;
-  try { await fetch(`${API}/invoices/${id}`,{method:'DELETE',credentials:'omit'}); loadInvoices(); toast('🗑 Eliminada','ok'); } catch {}
+async function delInv(id){
+  if(!confirm('¿Eliminar factura?'))return;
+  try{await fetch(`${API}/invoices/${id}`,{method:'DELETE',credentials:'omit'});loadInvoices();toast('🗑 Eliminada','ok');}catch{}
 }
 
-// ── Plan Modal ────────────────────────────────────────
-function showPlanModal() { document.getElementById('plan-modal').classList.add('show'); }
-function hidePlanModal() { document.getElementById('plan-modal').classList.remove('show'); }
-document.getElementById('plan-modal').addEventListener('click', e => { if (e.target.id==='plan-modal') hidePlanModal(); });
+// ── Plan Modal ─────────────────────────────────────────
+function showPlanModal(){document.getElementById('plan-modal').classList.add('show');}
+function hidePlanModal(){document.getElementById('plan-modal').classList.remove('show');}
+document.getElementById('plan-modal').addEventListener('click',e=>{if(e.target.id==='plan-modal')hidePlanModal();});
 
-// ── Markdown renderer ─────────────────────────────────
-function renderMd(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/`([^`]+)`/g,'<code>$1</code>')
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^---$/gm,'<hr>')
-    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
-    .replace(/^(\d+)\. (.+)$/gm,'<li>$2</li>')
+async function startCheckout(){
+  if(!S.user?.id){hidePlanModal();document.getElementById('auth-overlay').classList.remove('hidden');toast('Crea una cuenta primero','ok');return;}
+  const btn=document.querySelector('.btn-upgrade');
+  btn.textContent='Redirigiendo...';btn.disabled=true;
+  try{
+    const r=await fetch(`${API}/stripe/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({user_id:S.user.id,success_url:window.location.href,cancel_url:window.location.href})});
+    const d=await r.json();
+    if(d.checkout_url)window.location.href=d.checkout_url;
+    else toast('Error al iniciar el pago','err');
+  }catch{toast('Error de conexión con el sistema de pagos','err');}
+  finally{btn.textContent='Actualizar a Premium — 9,99€/mes';btn.disabled=false;}
+}
+
+const urlParams=new URLSearchParams(window.location.search);
+if(urlParams.get('session_id')){toast('🎉 ¡Pago completado! Tu cuenta Premium ya está activa.','ok');if(S.user){S.user.plan='premium';initApp();}window.history.replaceState({},'',window.location.pathname);}
+
+// ── Markdown renderer ──────────────────────────────────
+function renderMd(text){
+  if(!text)return'';
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^---$/gm,'<hr>').replace(/^[-*] (.+)$/gm,'<li>$1</li>')
     .replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`)
-    .replace(/\n\n+/g,'</p><p>')
-    .replace(/\n/g,'<br>')
-    .replace(/^(?!<[hup])(.+)/,'<p>$1</p>');
+    .replace(/\n\n+/g,'</p><p>').replace(/\n/g,'<br>');
+}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Toast ──────────────────────────────────────────────
+function toast(msg,type='ok'){
+  const w=document.getElementById('toast-wrap');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;el.textContent=msg;
+  w.appendChild(el);setTimeout(()=>el.remove(),4200);
 }
 
-function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ── Stripe Checkout ──────────────────────────────────
-async function startCheckout() {
-  if (!S.user?.id) {
-    hidePlanModal();
-    document.getElementById('auth-overlay').classList.remove('hidden');
-    toast('Crea una cuenta primero para suscribirte','ok');
-    return;
-  }
-  const btn = document.querySelector('.btn-upgrade');
-  btn.textContent = 'Redirigiendo...'; btn.disabled = true;
-  try {
-    const r = await fetch(`${API}/stripe/create-checkout`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      credentials: 'omit',
-      body: JSON.stringify({
-        user_id: S.user.id,
-        success_url: window.location.href,
-        cancel_url: window.location.href,
-      })
-    });
-    const d = await r.json();
-    if (d.checkout_url) {
-      window.location.href = d.checkout_url;
-    } else {
-      toast('Error al iniciar el pago. Inténtalo de nuevo.','err');
-    }
-  } catch(e) {
-    toast('Error de conexión con el sistema de pagos','err');
-  } finally {
-    btn.textContent = 'Actualizar a Premium — 9,99€/mes'; btn.disabled = false;
-  }
+// ── Spreadsheets ───────────────────────────────────────
+let xlFile=null;
+function handleXlDrop(e){e.preventDefault();document.getElementById('xl-upload-drop').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setXlFile(f);}
+function handleXlFile(e){const f=e.target.files[0];if(f)setXlFile(f);}
+function setXlFile(file){
+  xlFile=file;
+  document.getElementById('xl-file-name').textContent=`📊 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  document.getElementById('xl-file-selected').style.display='block';
+  document.getElementById('xl-upload-drop').style.display='none';
+}
+function clearXlFile(){
+  xlFile=null;
+  document.getElementById('xl-file-selected').style.display='none';
+  document.getElementById('xl-upload-drop').style.display='block';
+  document.getElementById('xl-file-input').value='';
+  document.getElementById('xl-result').style.display='none';
+}
+async function analyzeXl(){
+  if(!xlFile){toast('Primero selecciona un archivo','err');return;}
+  const btn=document.getElementById('xl-analyze-btn');
+  btn.textContent='⏳ Analizando...';btn.disabled=true;
+  const question=document.getElementById('xl-question').value||'Analiza este archivo fiscalmente';
+  const fd=new FormData();fd.append('file',xlFile);fd.append('question',question);
+  if(S.user?.id)fd.append('user_id',S.user.id);
+  try{
+    const r=await fetch(`${API}/spreadsheets/analyze`,{method:'POST',body:fd,credentials:'omit'});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.detail||'Error al analizar');
+    document.getElementById('xl-result-text').innerHTML=renderMd(data.answer);
+    document.getElementById('xl-result').style.display='block';
+    toast('✅ Análisis completado','ok');
+  }catch(e){toast(`❌ ${e.message}`,'err');}
+  finally{btn.textContent='Analizar con IA';btn.disabled=false;}
+}
+async function editXl(){
+  const fi=document.getElementById('xl-edit-file');
+  const dataInput=document.getElementById('xl-edit-data').value.trim();
+  if(!fi.files[0]){toast('Selecciona un archivo Excel','err');return;}
+  if(!dataInput){toast('Introduce los datos en formato JSON','err');return;}
+  try{JSON.parse(dataInput);}catch{toast('El JSON no es válido','err');return;}
+  const fd=new FormData();fd.append('file',fi.files[0]);fd.append('new_data',dataInput);
+  try{
+    const r=await fetch(`${API}/spreadsheets/edit`,{method:'POST',body:fd,credentials:'omit'});
+    if(!r.ok){const d=await r.json();throw new Error(d.detail);}
+    const blob=await r.blob();const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=fi.files[0].name.replace('.xlsx','_editado.xlsx');a.click();URL.revokeObjectURL(url);
+    toast('✅ Archivo descargado con las nuevas filas','ok');
+  }catch(e){toast(`❌ ${e.message}`,'err');}
+}
+async function exportExcel(){
+  const año=new Date().getFullYear();const userId=S.user?.id||1;
+  toast('⏳ Generando Excel...','ok');
+  try{
+    const r=await fetch(`${API}/spreadsheets/export/excel?año=${año}&user_id=${userId}`,{credentials:'omit'});
+    if(!r.ok)throw new Error();const blob=await r.blob();const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`FiscalIA_Facturas_${año}.xlsx`;a.click();URL.revokeObjectURL(url);
+    toast('✅ Excel descargado','ok');
+  }catch{toast('❌ Error al generar el Excel','err');}
+}
+async function exportCSV(){
+  const año=new Date().getFullYear();const userId=S.user?.id||1;
+  try{
+    const r=await fetch(`${API}/spreadsheets/export/csv?año=${año}&user_id=${userId}`,{credentials:'omit'});
+    if(!r.ok)throw new Error();const blob=await r.blob();const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`FiscalIA_Facturas_${año}.csv`;a.click();URL.revokeObjectURL(url);
+    toast('✅ CSV descargado','ok');
+  }catch{toast('❌ Error al generar el CSV','err');}
 }
 
-// Check if returning from successful Stripe payment
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('session_id')) {
-  toast('🎉 ¡Pago completado! Tu cuenta Premium ya está activa.','ok');
-  if (S.user) { S.user.plan = 'premium'; initApp(); }
-  window.history.replaceState({}, '', window.location.pathname);
+// ── Profile Modal ──────────────────────────────────────
+function showProfileModal(){
+  if(!S.user?.id){showPlanModal();return;}
+  document.getElementById('profile-avatar-big').textContent=S.user.avatar_initials||'?';
+  document.getElementById('profile-modal-name').textContent=S.user.full_name||S.user.email||'Mi perfil';
+  document.getElementById('pf-name').value=S.user.full_name||'';
+  document.getElementById('pf-email').value=S.user.email||'';
+  const chip=document.getElementById('profile-plan-chip');
+  chip.textContent=S.user.plan==='premium'?'⭐ Premium':'Plan Gratuito';
+  chip.className='chip '+(S.user.plan==='premium'?'chip-plan-premium':'chip-plan-free');
+  ['pf-profile-msg','pf-pass-msg'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='profile-msg';el.textContent='';}});
+  ['pf-pass-current','pf-pass-new','pf-pass-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('profile-modal').classList.add('show');
+}
+function hideProfileModal(){document.getElementById('profile-modal').classList.remove('show');}
+document.getElementById('profile-modal').addEventListener('click',e=>{if(e.target.id==='profile-modal')hideProfileModal();});
+
+function showProfileMsg(id,msg,type){
+  const el=document.getElementById(id);if(!el)return;
+  el.textContent=msg;el.className='profile-msg '+type+' show';
 }
 
-// ── Toast ────────────────────────────────────────────
-function toast(msg, type='ok') {
-  const w = document.getElementById('toast-wrap');
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
-  w.appendChild(el);
-  setTimeout(() => el.remove(), 4200);
-
+async function saveProfile(){
+  const name=document.getElementById('pf-name').value.trim();
+  const email=document.getElementById('pf-email').value.trim();
+  if(!email){showProfileMsg('pf-profile-msg','El email no puede estar vacío','err');return;}
+  const btn=document.getElementById('pf-save-btn');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const r=await fetch(`${API}/auth/profile`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token}`},credentials:'omit',body:JSON.stringify({full_name:name||null,email})});
+    const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error al guardar');
+    S.user.full_name=d.user.full_name;S.user.email=d.user.email;S.user.avatar_initials=d.user.avatar_initials;
+    localStorage.setItem('user',JSON.stringify(S.user));
+    document.getElementById('user-avatar').textContent=d.user.avatar_initials;
+    document.getElementById('user-name-display').textContent=d.user.full_name||d.user.email;
+    document.getElementById('profile-avatar-big').textContent=d.user.avatar_initials;
+    showProfileMsg('pf-profile-msg','✅ Perfil actualizado correctamente','ok');
+    toast('✅ Perfil actualizado','ok');
+  }catch(e){showProfileMsg('pf-profile-msg','❌ '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Guardar cambios';}
 }
 
-// ── Spreadsheets ──────────────────────────────────────────────
-const viewTitlesExtra = {
-  spreadsheets: '<strong>Excel</strong> / CSV',
-};
-Object.assign(viewTitles, viewTitlesExtra);
-
-let xlFile = null;
-
-function handleXlDrop(e) {
-  e.preventDefault();
-  document.getElementById('xl-upload-drop').classList.remove('drag');
-  const f = e.dataTransfer.files[0];
-  if (f) setXlFile(f);
+async function changePassword(){
+  const current=document.getElementById('pf-pass-current').value;
+  const newPass=document.getElementById('pf-pass-new').value;
+  const confirm=document.getElementById('pf-pass-confirm').value;
+  if(!current||!newPass){showProfileMsg('pf-pass-msg','Rellena todos los campos','err');return;}
+  if(newPass!==confirm){showProfileMsg('pf-pass-msg','Las contraseñas no coinciden','err');return;}
+  if(newPass.length<6){showProfileMsg('pf-pass-msg','Mínimo 6 caracteres','err');return;}
+  const btn=document.getElementById('pf-pass-btn');btn.disabled=true;btn.textContent='Cambiando...';
+  try{
+    const r=await fetch(`${API}/auth/change-password`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token}`},credentials:'omit',body:JSON.stringify({current_password:current,new_password:newPass})});
+    const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error');
+    showProfileMsg('pf-pass-msg','✅ Contraseña cambiada correctamente','ok');
+    ['pf-pass-current','pf-pass-new','pf-pass-confirm'].forEach(id=>document.getElementById(id).value='');
+    toast('✅ Contraseña actualizada','ok');
+  }catch(e){showProfileMsg('pf-pass-msg','❌ '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Cambiar contraseña';}
 }
 
-function handleXlFile(e) {
-  const f = e.target.files[0];
-  if (f) setXlFile(f);
+function logout(){
+  if(!confirm('¿Cerrar sesión?'))return;
+  S.token=null;S.user=null;S.conversationId=null;
+  localStorage.removeItem('token');localStorage.removeItem('user');
+  hideProfileModal();
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('conv-list').innerHTML='';
+  document.getElementById('conv-section-label').style.display='none';
+  newChat();toast('👋 Sesión cerrada','ok');
 }
 
-function setXlFile(file) {
-  xlFile = file;
-  document.getElementById('xl-file-name').textContent = `📊 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-  document.getElementById('xl-file-selected').style.display = 'block';
-  document.getElementById('xl-upload-drop').style.display = 'none';
+async function deleteAccount(){
+  if(!confirm('¿Eliminar tu cuenta? Esta acción es IRREVERSIBLE.'))return;
+  if(!confirm('Confirma de nuevo: ¿seguro que quieres eliminar tu cuenta?'))return;
+  try{
+    const r=await fetch(`${API}/auth/account`,{method:'DELETE',headers:{'Authorization':`Bearer ${S.token}`},credentials:'omit'});
+    if(!r.ok){const d=await r.json();throw new Error(d.detail);}
+    logout();toast('Cuenta eliminada','ok');
+  }catch(e){toast('❌ '+e.message,'err');}
 }
 
-function clearXlFile() {
-  xlFile = null;
-  document.getElementById('xl-file-selected').style.display = 'none';
-  document.getElementById('xl-upload-drop').style.display = 'block';
-  document.getElementById('xl-file-input').value = '';
-  document.getElementById('xl-result').style.display = 'none';
+// ── Forgot Password ────────────────────────────────────
+function showForgotModal(){
+  document.getElementById('forgot-step-1').style.display='block';
+  document.getElementById('forgot-step-2').style.display='none';
+  document.getElementById('forgot-email').value='';
+  const msg=document.getElementById('forgot-msg');if(msg){msg.className='profile-msg';msg.textContent='';}
+  document.getElementById('forgot-modal').classList.add('show');
+}
+function hideForgotModal(){document.getElementById('forgot-modal').classList.remove('show');}
+document.getElementById('forgot-modal').addEventListener('click',e=>{if(e.target.id==='forgot-modal')hideForgotModal();});
+
+async function requestReset(){
+  const email=document.getElementById('forgot-email').value.trim();
+  if(!email){showProfileMsg('forgot-msg','Introduce tu email','err');return;}
+  const btn=document.getElementById('forgot-req-btn');btn.disabled=true;btn.textContent='Enviando...';
+  try{
+    const r=await fetch(`${API}/auth/reset-password/request`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({email})});
+    const d=await r.json();
+    if(d.reset_token){document.getElementById('forgot-token').value=d.reset_token;showProfileMsg('forgot-msg','✅ Token generado. Cópialo abajo para continuar.','ok');document.getElementById('forgot-step-2').style.display='block';}
+    else showProfileMsg('forgot-msg','✅ '+d.message,'ok');
+  }catch(e){showProfileMsg('forgot-msg','❌ Error: '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Solicitar recuperación';}
 }
 
-async function analyzeXl() {
-  if (!xlFile) { toast('Primero selecciona un archivo', 'err'); return; }
-  const btn = document.getElementById('xl-analyze-btn');
-  btn.textContent = '⏳ Analizando...'; btn.disabled = true;
-
-  const question = document.getElementById('xl-question').value || 'Analiza este archivo fiscalmente';
-  const fd = new FormData();
-  fd.append('file', xlFile);
-  fd.append('question', question);
-  if (S.user?.id) fd.append('user_id', S.user.id);
-
-  try {
-    const r = await fetch(`${API}/spreadsheets/analyze`, { method: 'POST', body: fd, credentials: 'omit' });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || 'Error al analizar');
-
-    const resultEl = document.getElementById('xl-result');
-    document.getElementById('xl-result-text').innerHTML = renderMd(data.answer);
-    resultEl.style.display = 'block';
-    resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    toast('✅ Análisis completado', 'ok');
-  } catch(e) {
-    toast(`❌ ${e.message}`, 'err');
-  } finally {
-    btn.textContent = 'Analizar con IA'; btn.disabled = false;
-  }
+async function confirmReset(){
+  const token=document.getElementById('forgot-token').value.trim();
+  const newPass=document.getElementById('forgot-new-pass').value;
+  if(!token||!newPass){showProfileMsg('forgot-msg-2','Rellena todos los campos','err');return;}
+  if(newPass.length<6){showProfileMsg('forgot-msg-2','Mínimo 6 caracteres','err');return;}
+  const btn=document.getElementById('forgot-confirm-btn');btn.disabled=true;btn.textContent='Restableciendo...';
+  try{
+    const r=await fetch(`${API}/auth/reset-password/confirm`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({token,new_password:newPass})});
+    const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error');
+    showProfileMsg('forgot-msg-2','✅ '+d.message,'ok');
+    setTimeout(()=>hideForgotModal(),2000);toast('✅ Contraseña restablecida.','ok');
+  }catch(e){showProfileMsg('forgot-msg-2','❌ '+e.message,'err');}
+  finally{btn.disabled=false;btn.textContent='Restablecer contraseña';}
 }
-
-async function editXl() {
-  const fileInput = document.getElementById('xl-edit-file');
-  const dataInput = document.getElementById('xl-edit-data').value.trim();
-
-  if (!fileInput.files[0]) { toast('Selecciona un archivo Excel', 'err'); return; }
-  if (!dataInput) { toast('Introduce los datos a añadir en formato JSON', 'err'); return; }
-
-  try { JSON.parse(dataInput); } catch { toast('El JSON no es válido', 'err'); return; }
-
-  const fd = new FormData();
-  fd.append('file', fileInput.files[0]);
-  fd.append('new_data', dataInput);
-
-  try {
-    const r = await fetch(`${API}/spreadsheets/edit`, { method: 'POST', body: fd, credentials: 'omit' });
-    if (!r.ok) { const d = await r.json(); throw new Error(d.detail); }
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = fileInput.files[0].name.replace('.xlsx','_editado.xlsx');
-    a.click(); URL.revokeObjectURL(url);
-    toast('✅ Archivo descargado con las nuevas filas', 'ok');
-  } catch(e) {
-    toast(`❌ ${e.message}`, 'err');
-  }
-}
-
-async function exportExcel() {
-  const año = new Date().getFullYear();
-  const userId = S.user?.id || 1;
-  toast('⏳ Generando Excel...', 'ok');
-  try {
-    const r = await fetch(`${API}/spreadsheets/export/excel?año=${año}&user_id=${userId}`, { credentials: 'omit' });
-    if (!r.ok) throw new Error('Error al generar el Excel');
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `FiscalIA_Facturas_${año}.xlsx`;
-    a.click(); URL.revokeObjectURL(url);
-    toast('✅ Excel descargado', 'ok');
-  } catch(e) {
-    toast(`❌ ${e.message}`, 'err');
-  }
-}
-
-async function exportCSV() {
-  const año = new Date().getFullYear();
-  const userId = S.user?.id || 1;
-  try {
-    const r = await fetch(`${API}/spreadsheets/export/csv?año=${año}&user_id=${userId}`, { credentials: 'omit' });
-    if (!r.ok) throw new Error('Error al generar el CSV');
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `FiscalIA_Facturas_${año}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    toast('✅ CSV descargado', 'ok');
-  } catch(e) {
-    toast(`❌ ${e.message}`, 'err');
-  }
-}
-
-<!-- PROFILE MODAL -->
-<div class="modal-overlay" id="profile-modal">
-  <div class="modal" style="max-width:500px">
-    <button class="modal-close" onclick="hideProfileModal()">✕</button>
-
-    <div style="text-align:center;margin-bottom:24px">
-      <div class="profile-avatar-big" id="profile-avatar-big">?</div>
-      <h2 style="font-family:var(--font-d);font-size:1.3rem" id="profile-modal-name">Mi perfil</h2>
-      <span class="chip chip-plan-free" id="profile-plan-chip" style="margin-top:6px">Plan Gratuito</span>
-    </div>
-
-    <!-- Edit profile -->
-    <div class="profile-section">
-      <div class="profile-section-title">Información personal</div>
-      <div class="profile-field">
-        <label>Nombre completo</label>
-        <input type="text" id="pf-name" placeholder="Tu nombre">
-      </div>
-      <div class="profile-field">
-        <label>Email</label>
-        <input type="email" id="pf-email" placeholder="tu@email.com">
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="saveProfile()" id="pf-save-btn">Guardar cambios</button>
-      <div class="profile-msg" id="pf-profile-msg"></div>
-    </div>
-
-    <!-- Change password -->
-    <div class="profile-section">
-      <div class="profile-section-title">Cambiar contraseña</div>
-      <div class="profile-field">
-        <label>Contraseña actual</label>
-        <input type="password" id="pf-pass-current" placeholder="••••••••">
-      </div>
-      <div class="profile-field">
-        <label>Nueva contraseña</label>
-        <input type="password" id="pf-pass-new" placeholder="Mínimo 6 caracteres">
-      </div>
-      <div class="profile-field">
-        <label>Confirmar nueva contraseña</label>
-        <input type="password" id="pf-pass-confirm" placeholder="Repite la nueva contraseña">
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="changePassword()" id="pf-pass-btn">Cambiar contraseña</button>
-      <div class="profile-msg" id="pf-pass-msg"></div>
-    </div>
-
-    <!-- Logout + Delete -->
-    <div class="profile-section">
-      <div class="profile-section-title">Sesión</div>
-      <button class="btn btn-ghost" onclick="logout()" style="width:100%;margin-bottom:12px">
-        🚪 Cerrar sesión
-      </button>
-      <div class="danger-zone">
-        <p>Eliminar la cuenta borrará todos tus datos permanentemente.</p>
-        <button class="btn btn-danger btn-sm" onclick="deleteAccount()">🗑 Eliminar mi cuenta</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- FORGOT PASSWORD MODAL -->
-<div class="modal-overlay" id="forgot-modal">
-  <div class="modal" style="max-width:400px">
-    <button class="modal-close" onclick="hideForgotModal()">✕</button>
-    <h2 style="font-family:var(--font-d);font-size:1.3rem;margin-bottom:6px">Recuperar contraseña</h2>
-    <p style="color:var(--text2);font-size:.82rem;margin-bottom:20px">Introduce tu email y recibirás un token para restablecer tu contraseña.</p>
-
-    <div id="forgot-step-1">
-      <div class="auth-input-group" style="margin-bottom:12px">
-        <label class="profile-field label">Email</label>
-        <input type="email" id="forgot-email" class="auth-input" placeholder="tu@email.com">
-      </div>
-      <button class="btn-auth" onclick="requestReset()" id="forgot-req-btn">Solicitar recuperación</button>
-      <div class="profile-msg" id="forgot-msg" style="margin-top:10px"></div>
-    </div>
-
-    <div id="forgot-step-2" style="display:none">
-      <div class="profile-field" style="margin-bottom:10px">
-        <label>Token de recuperación</label>
-        <input type="text" id="forgot-token" class="auth-input" placeholder="Pega el token aquí" style="font-size:.75rem;font-family:monospace">
-      </div>
-      <div class="profile-field" style="margin-bottom:10px">
-        <label>Nueva contraseña</label>
-        <input type="password" id="forgot-new-pass" class="auth-input" placeholder="Mínimo 6 caracteres">
-      </div>
-      <button class="btn-auth" onclick="confirmReset()" id="forgot-confirm-btn">Restablecer contraseña</button>
-      <div class="profile-msg" id="forgot-msg-2" style="margin-top:10px"></div>
-    </div>
-  </div>
-</div>
-
+</script>
 </body>
 </html>
