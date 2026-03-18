@@ -31,7 +31,10 @@ async def create_checkout(req: CreateCheckoutRequest, db: AsyncSession = Depends
     El frontend redirige al usuario a la URL devuelta.
     """
     try:
-        import stripe
+        try:
+            import stripe
+        except ImportError:
+            raise HTTPException(status_code=501, detail="Pagos no disponibles todavía. Contacta con soporte.")
         stripe.api_key = settings.STRIPE_SECRET_KEY
 
         result = await db.execute(select(User).where(User.id == req.user_id))

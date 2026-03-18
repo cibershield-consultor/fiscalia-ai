@@ -466,6 +466,9 @@ tr:hover td{background:rgba(255,255,255,0.02)}
         <button class="nav-btn" onclick="showView('invoices')" id="nav-invoices">
           <span class="nb-icon">🧾</span><span class="nb-label">Facturas</span>
         </button>
+        <button class="nav-btn" onclick="showView('spreadsheets')" id="nav-spreadsheets">
+          <span class="nb-icon">📊</span><span class="nb-label">Excel / CSV</span>
+        </button>
       </div>
 
       <div class="nav-section">
@@ -705,6 +708,94 @@ tr:hover td{background:rgba(255,255,255,0.02)}
             </div>
           </div>
           <div id="inv-table"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SPREADSHEETS VIEW -->
+    <div class="view" id="view-spreadsheets">
+      <div class="invoices-view">
+        <div class="section-header">
+          <div>
+            <h2>Excel <span>/ CSV</span></h2>
+            <p style="color:var(--text2);font-size:.82rem;margin-top:3px">Leer, editar y generar hojas de cálculo con IA</p>
+          </div>
+        </div>
+
+        <!-- EXPORT SECTION -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">📥 Exportar mis datos</div>
+          <p style="color:var(--text2);font-size:.82rem;margin-bottom:16px">Genera un informe profesional de todas tus facturas con resumen fiscal y desglose trimestral.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="exportExcel()">
+              📊 Descargar Excel completo
+            </button>
+            <button class="btn btn-ghost" onclick="exportCSV()">
+              📄 Descargar CSV
+            </button>
+          </div>
+          <p style="color:var(--text3);font-size:.72rem;margin-top:10px">El Excel incluye: listado de facturas · resumen fiscal IVA/IRPF · desglose trimestral</p>
+        </div>
+
+        <!-- ANALYZE SECTION -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">🔍 Analizar un archivo con IA</div>
+          <p style="color:var(--text2);font-size:.82rem;margin-bottom:16px">Sube tu Excel o CSV y la IA lo analiza fiscalmente: detecta gastos deducibles, calcula IVA, estima IRPF.</p>
+
+          <div class="upload-drop" id="xl-upload-drop" style="margin-bottom:12px"
+               onclick="document.getElementById('xl-file-input').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondrop="handleXlDrop(event)"
+               ondragleave="this.classList.remove('drag')">
+            <span class="upload-drop-icon">📊</span>
+            <h3>Arrastra tu Excel o CSV aquí</h3>
+            <p>.xlsx · .xls · .csv — máx. 10MB</p>
+            <input type="file" id="xl-file-input" style="display:none" accept=".xlsx,.xls,.csv" onchange="handleXlFile(event)">
+          </div>
+
+          <div id="xl-file-selected" style="display:none;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-size:.82rem;color:var(--text2)">
+              <span id="xl-file-name">archivo.xlsx</span>
+              <button onclick="clearXlFile()" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem">✕</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input type="text" id="xl-question"
+              style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--font-b);font-size:.875rem;padding:9px 12px;outline:none"
+              placeholder="¿Qué quieres saber? (ej: ¿qué gastos son deducibles?)"
+              value="Analiza este archivo y dame un resumen fiscal detallado">
+            <button class="btn btn-primary" onclick="analyzeXl()" id="xl-analyze-btn">Analizar con IA</button>
+          </div>
+
+          <div id="xl-result" style="display:none">
+            <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:16px;font-size:.85rem;color:rgba(240,238,232,.9);line-height:1.65" id="xl-result-text"></div>
+          </div>
+        </div>
+
+        <!-- EDIT SECTION -->
+        <div class="card">
+          <div class="card-title">✏️ Añadir filas a un Excel existente</div>
+          <p style="color:var(--text2);font-size:.82rem;margin-bottom:16px">Sube tu Excel, añade nuevas filas con los datos que quieras, y descarga el archivo actualizado.</p>
+
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <label style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px">Archivo Excel a editar</label>
+              <input type="file" id="xl-edit-file" accept=".xlsx,.xls"
+                style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:.82rem;padding:8px;width:100%">
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <label style="font-size:.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:5px">Filas a añadir (JSON)</label>
+            <textarea id="xl-edit-data" rows="4"
+              style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:monospace;font-size:.8rem;padding:10px;outline:none;resize:vertical"
+              placeholder='[{"Fecha":"01/01/2026","Concepto":"Nueva factura","Importe":1000}]'></textarea>
+            <p style="color:var(--text3);font-size:.7rem;margin-top:4px">Las claves del JSON deben coincidir con los encabezados de tu Excel.</p>
+          </div>
+
+          <button class="btn btn-primary" onclick="editXl()">✏️ Añadir filas y descargar</button>
         </div>
       </div>
     </div>
@@ -1376,7 +1467,133 @@ function toast(msg, type='ok') {
   el.textContent = msg;
   w.appendChild(el);
   setTimeout(() => el.remove(), 4200);
+
 }
-</script>
+
+// ── Spreadsheets ──────────────────────────────────────────────
+const viewTitlesExtra = {
+  spreadsheets: '<strong>Excel</strong> / CSV',
+};
+Object.assign(viewTitles, viewTitlesExtra);
+
+let xlFile = null;
+
+function handleXlDrop(e) {
+  e.preventDefault();
+  document.getElementById('xl-upload-drop').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) setXlFile(f);
+}
+
+function handleXlFile(e) {
+  const f = e.target.files[0];
+  if (f) setXlFile(f);
+}
+
+function setXlFile(file) {
+  xlFile = file;
+  document.getElementById('xl-file-name').textContent = `📊 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  document.getElementById('xl-file-selected').style.display = 'block';
+  document.getElementById('xl-upload-drop').style.display = 'none';
+}
+
+function clearXlFile() {
+  xlFile = null;
+  document.getElementById('xl-file-selected').style.display = 'none';
+  document.getElementById('xl-upload-drop').style.display = 'block';
+  document.getElementById('xl-file-input').value = '';
+  document.getElementById('xl-result').style.display = 'none';
+}
+
+async function analyzeXl() {
+  if (!xlFile) { toast('Primero selecciona un archivo', 'err'); return; }
+  const btn = document.getElementById('xl-analyze-btn');
+  btn.textContent = '⏳ Analizando...'; btn.disabled = true;
+
+  const question = document.getElementById('xl-question').value || 'Analiza este archivo fiscalmente';
+  const fd = new FormData();
+  fd.append('file', xlFile);
+  fd.append('question', question);
+  if (S.user?.id) fd.append('user_id', S.user.id);
+
+  try {
+    const r = await fetch(`${API}/spreadsheets/analyze`, { method: 'POST', body: fd, credentials: 'omit' });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Error al analizar');
+
+    const resultEl = document.getElementById('xl-result');
+    document.getElementById('xl-result-text').innerHTML = renderMd(data.answer);
+    resultEl.style.display = 'block';
+    resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    toast('✅ Análisis completado', 'ok');
+  } catch(e) {
+    toast(`❌ ${e.message}`, 'err');
+  } finally {
+    btn.textContent = 'Analizar con IA'; btn.disabled = false;
+  }
+}
+
+async function editXl() {
+  const fileInput = document.getElementById('xl-edit-file');
+  const dataInput = document.getElementById('xl-edit-data').value.trim();
+
+  if (!fileInput.files[0]) { toast('Selecciona un archivo Excel', 'err'); return; }
+  if (!dataInput) { toast('Introduce los datos a añadir en formato JSON', 'err'); return; }
+
+  try { JSON.parse(dataInput); } catch { toast('El JSON no es válido', 'err'); return; }
+
+  const fd = new FormData();
+  fd.append('file', fileInput.files[0]);
+  fd.append('new_data', dataInput);
+
+  try {
+    const r = await fetch(`${API}/spreadsheets/edit`, { method: 'POST', body: fd, credentials: 'omit' });
+    if (!r.ok) { const d = await r.json(); throw new Error(d.detail); }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileInput.files[0].name.replace('.xlsx','_editado.xlsx');
+    a.click(); URL.revokeObjectURL(url);
+    toast('✅ Archivo descargado con las nuevas filas', 'ok');
+  } catch(e) {
+    toast(`❌ ${e.message}`, 'err');
+  }
+}
+
+async function exportExcel() {
+  const año = new Date().getFullYear();
+  const userId = S.user?.id || 1;
+  toast('⏳ Generando Excel...', 'ok');
+  try {
+    const r = await fetch(`${API}/spreadsheets/export/excel?año=${año}&user_id=${userId}`, { credentials: 'omit' });
+    if (!r.ok) throw new Error('Error al generar el Excel');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `FiscalIA_Facturas_${año}.xlsx`;
+    a.click(); URL.revokeObjectURL(url);
+    toast('✅ Excel descargado', 'ok');
+  } catch(e) {
+    toast(`❌ ${e.message}`, 'err');
+  }
+}
+
+async function exportCSV() {
+  const año = new Date().getFullYear();
+  const userId = S.user?.id || 1;
+  try {
+    const r = await fetch(`${API}/spreadsheets/export/csv?año=${año}&user_id=${userId}`, { credentials: 'omit' });
+    if (!r.ok) throw new Error('Error al generar el CSV');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `FiscalIA_Facturas_${año}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast('✅ CSV descargado', 'ok');
+  } catch(e) {
+    toast(`❌ ${e.message}`, 'err');
+  }
+}
+
 </body>
 </html>

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db
-from app.routers import chat, analysis, invoices, auth, fiscal, admin, stripe_router
+from app.routers import chat, analysis, invoices, auth, fiscal, admin, stripe_router, spreadsheets
 
 
 @asynccontextmanager
@@ -39,7 +39,8 @@ app.include_router(analysis.router,     prefix="/api/analysis", tags=["Análisis
 app.include_router(invoices.router,     prefix="/api/invoices", tags=["Facturas"])
 app.include_router(fiscal.router,       prefix="/api/fiscal",   tags=["Fiscal"])
 app.include_router(admin.router,        prefix="/api/admin",    tags=["Admin"])
-app.include_router(stripe_router.router,prefix="/api/stripe",   tags=["Pagos"])
+app.include_router(stripe_router.router,  prefix="/api/stripe",        tags=["Pagos"])
+app.include_router(spreadsheets.router,   prefix="/api/spreadsheets",  tags=["Hojas de Cálculo"])
 
 
 @app.get("/")
