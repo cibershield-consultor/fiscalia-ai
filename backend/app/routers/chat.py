@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
-import uuid, traceback
+import uuid, traceback, json
 from datetime import datetime
 from app.core.database import get_db
 from app.models.conversation import Conversation, Message
 from app.models.invoice import Invoice
 from app.models.user import User
-from app.services.ai_service import ask_ai
+from app.services.ai_service import ask_ai, ask_ai_stream
 
 router = APIRouter()
 
@@ -20,103 +20,64 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     conversation_id: Optional[int] = None
     user_id: Optional[int] = None
+    # Multiple file support
+    files: Optional[list[dict]] = None  # [{base64, type, name}, ...]
+    # Keep single file for backwards compat
     file_base64: Optional[str] = None
     file_type: Optional[str] = None
     file_name: Optional[str] = None
+    stream: bool = False
 
 
 async def build_financial_context(user_id: int, db: AsyncSession) -> str:
-    """
-    Builds a financial context string from the user's invoices and dashboard data.
-    This is injected into the AI's system prompt so it can give personalized answers.
-    """
     try:
         result = await db.execute(
-            select(Invoice)
-            .where(Invoice.user_id == user_id)
-            .order_by(Invoice.fecha.desc())
+            select(Invoice).where(Invoice.user_id == user_id).order_by(Invoice.fecha.desc())
         )
         invoices = result.scalars().all()
+        if not invoices: return ""
 
-        if not invoices:
-            return ""
-
-        año_actual = datetime.utcnow().year
-
-        # Filter current year
-        this_year = [
-            i for i in invoices
-            if (i.fecha or i.created_at) and (i.fecha or i.created_at).year == año_actual
-        ]
+        año = datetime.utcnow().year
+        this_year = [i for i in invoices if (i.fecha or i.created_at) and (i.fecha or i.created_at).year == año]
 
         ingresos = sum(i.base_imponible for i in this_year if i.tipo == "ingreso")
         gastos = sum(i.base_imponible for i in this_year if i.tipo == "gasto")
-        gastos_ded = sum(
-            i.base_imponible * (i.porcentaje_deduccion / 100)
-            for i in this_year if i.tipo == "gasto" and i.deducible
-        )
-        iva_rep = sum(i.cuota_iva for i in this_year if i.tipo == "ingreso")
-        iva_sop = sum(
-            i.cuota_iva * (i.porcentaje_deduccion / 100)
-            for i in this_year if i.tipo == "gasto" and i.deducible
-        )
+        gas_ded = sum(i.base_imponible*(i.porcentaje_deduccion/100) for i in this_year if i.tipo=="gasto" and i.deducible)
+        iva_rep = sum(i.cuota_iva for i in this_year if i.tipo=="ingreso")
+        iva_sop = sum(i.cuota_iva*(i.porcentaje_deduccion/100) for i in this_year if i.tipo=="gasto" and i.deducible)
         beneficio = ingresos - gastos
-        margen = (beneficio / ingresos * 100) if ingresos > 0 else 0
 
-        # Category summary
         cats: dict = {}
         for inv in this_year:
             cat = inv.categoria or "otros"
             cats[cat] = cats.get(cat, 0) + inv.base_imponible
 
         top_cats = sorted(cats.items(), key=lambda x: x[1], reverse=True)[:5]
-
-        # Recent invoices (last 5)
         recent = invoices[:5]
         recent_lines = "\n".join([
-            f"  - {inv.tipo.upper()} | {inv.emisor or inv.concepto or 'Sin descripción'} | "
-            f"{inv.base_imponible:.2f}€ | {inv.categoria or 'sin categoría'} | "
-            f"{'deducible' if inv.deducible else 'no deducible'} | "
-            f"{(inv.fecha or inv.created_at).strftime('%d/%m/%Y') if (inv.fecha or inv.created_at) else 'sin fecha'}"
+            f"  - {inv.tipo.upper()} | {inv.emisor or inv.concepto or 'Sin desc'} | "
+            f"{inv.base_imponible:.2f}€ | {inv.categoria or 'sin cat'} | "
+            f"{'deducible '+str(inv.porcentaje_deduccion)+'%' if inv.deducible else 'no deducible'}"
             for inv in recent
         ])
 
-        # Get user plan
-        user_result = await db.execute(select(User).where(User.id == user_id))
-        user = user_result.scalar_one_or_none()
+        user_res = await db.execute(select(User).where(User.id == user_id))
+        user = user_res.scalar_one_or_none()
         plan = user.plan if user else "free"
 
-        context = f"""
-== DATOS FINANCIEROS REALES DEL USUARIO (año {año_actual}) ==
+        return f"""== DATOS FINANCIEROS DEL USUARIO (año {año}) ==
+Ingresos: {ingresos:.2f}€ | Gastos: {gastos:.2f}€ | Beneficio: {beneficio:.2f}€
+Gastos deducibles: {gas_ded:.2f}€ | IVA repercutido: {iva_rep:.2f}€ | IVA soportado: {iva_sop:.2f}€
+IVA a ingresar estimado: {max(0,iva_rep-iva_sop):.2f}€ | Total facturas año: {len(this_year)} | Plan: {plan}
 
-RESUMEN ECONÓMICO:
-- Ingresos totales: {ingresos:.2f}€
-- Gastos totales: {gastos:.2f}€
-- Beneficio neto: {beneficio:.2f}€
-- Margen neto: {margen:.1f}%
-- Gastos deducibles: {gastos_ded:.2f}€
-- IVA repercutido (a cobrar): {iva_rep:.2f}€
-- IVA soportado deducible: {iva_sop:.2f}€
-- IVA a ingresar a Hacienda: {max(0, iva_rep - iva_sop):.2f}€
-- Total facturas registradas este año: {len(this_year)}
-- Plan del usuario: {plan}
+Categorías principales: {', '.join(f'{c}:{a:.0f}€' for c,a in top_cats)}
 
-PRINCIPALES CATEGORÍAS DE GASTO/INGRESO:
-{chr(10).join(f"  - {cat}: {amt:.2f}€" for cat, amt in top_cats)}
+Últimas facturas:
+{recent_lines}
 
-ÚLTIMAS 5 FACTURAS:
-{recent_lines if recent_lines else "  Sin facturas recientes"}
-
-INSTRUCCIÓN: Usa estos datos para personalizar tus respuestas. 
-Cuando el usuario pregunte sobre su situación fiscal, IVA a pagar, gastos, 
-deducciones o cualquier análisis financiero, usa ESTOS NÚMEROS REALES en lugar 
-de ejemplos genéricos. Dirígete al usuario de forma personal ("en tu caso", 
-"tus facturas muestran", "con tus ingresos de X€", etc.)
-== FIN DATOS FINANCIEROS ==
-"""
-        return context.strip()
-
-    except Exception as e:
+INSTRUCCIÓN: Usa estos datos para personalizar respuestas. Habla en primera persona al usuario ("tus facturas muestran..."). Pero NO asumas el tipo de contribuyente si no lo ha indicado.
+== FIN DATOS =="""
+    except Exception:
         traceback.print_exc()
         return ""
 
@@ -129,44 +90,75 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         # Get or create conversation
         conversation = None
         if req.conversation_id:
-            result = await db.execute(
-                select(Conversation).where(Conversation.id == req.conversation_id)
-            )
+            result = await db.execute(select(Conversation).where(Conversation.id == req.conversation_id))
             conversation = result.scalar_one_or_none()
 
         if not conversation:
-            title = req.message[:60] if req.message else (req.file_name or "Documento adjunto")
-            conversation = Conversation(
-                session_id=session_id,
-                user_id=req.user_id,
-                title=title,
-            )
+            title = req.message[:60] if req.message else "Documento adjunto"
+            conversation = Conversation(session_id=session_id, user_id=req.user_id, title=title)
             db.add(conversation)
             await db.commit()
             await db.refresh(conversation)
 
         # Load history
         result = await db.execute(
-            select(Message)
-            .where(Message.conversation_id == conversation.id)
-            .order_by(Message.created_at)
+            select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)
         )
-        messages = result.scalars().all()
-        history = [{"role": m.role, "content": m.content} for m in messages]
+        history = [{"role": m.role, "content": m.content} for m in result.scalars().all()]
 
-        # Build financial context if user is logged in
+        # Financial context (only for logged in users)
         financial_context = ""
         if req.user_id:
             financial_context = await build_financial_context(req.user_id, db)
 
-        # Handle image attachment
-        image_b64 = None
-        image_type = None
-        if req.file_base64 and req.file_type and req.file_type.startswith("image/"):
-            image_b64 = req.file_base64
-            image_type = req.file_type
+        # Handle files — support multiple
+        files = req.files or []
+        # Backwards compat: single file
+        if req.file_base64 and req.file_type:
+            files.append({"base64": req.file_base64, "type": req.file_type, "name": req.file_name or "archivo"})
 
-        # Call AI with financial context
+        # For now use first image for vision (Groq supports one image)
+        image_b64, image_type = None, None
+        file_descriptions = []
+        for f in files:
+            if f.get("type","").startswith("image/") and not image_b64:
+                image_b64 = f["base64"]
+                image_type = f["type"]
+            file_descriptions.append(f.get("name","archivo"))
+
+        # Build message content
+        message_text = req.message
+        if file_descriptions:
+            message_text = f"[Archivos adjuntos: {', '.join(file_descriptions)}]\n{req.message}"
+
+        # STREAMING response
+        if req.stream:
+            async def generate():
+                full_answer = ""
+                try:
+                    async for chunk in ask_ai_stream(
+                        req.message,
+                        conversation_history=history,
+                        context=financial_context or None,
+                        image_base64=image_b64,
+                        image_media_type=image_type,
+                    ):
+                        full_answer += chunk
+                        yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+
+                    # Save to DB after streaming completes
+                    db.add(Message(conversation_id=conversation.id, role="user", content=message_text))
+                    db.add(Message(conversation_id=conversation.id, role="assistant", content=full_answer))
+                    await db.commit()
+
+                    yield f"data: {json.dumps({'done': True, 'conversation_id': conversation.id, 'session_id': session_id})}\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+            return StreamingResponse(generate(), media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+        # NON-STREAMING response
         answer = await ask_ai(
             req.message,
             conversation_history=history,
@@ -175,27 +167,15 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             image_media_type=image_type,
         )
 
-        # Save messages
-        user_msg_content = req.message
-        if req.file_name:
-            user_msg_content = f"[Archivo adjunto: {req.file_name}]\n{req.message}"
-
-        db.add(Message(conversation_id=conversation.id, role="user", content=user_msg_content))
+        db.add(Message(conversation_id=conversation.id, role="user", content=message_text))
         db.add(Message(conversation_id=conversation.id, role="assistant", content=answer))
         await db.commit()
 
-        return JSONResponse(content={
-            "answer": answer,
-            "conversation_id": conversation.id,
-            "session_id": session_id,
-        })
+        return JSONResponse(content={"answer": answer, "conversation_id": conversation.id, "session_id": session_id})
 
     except Exception as e:
         traceback.print_exc()
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e), "type": type(e).__name__}
-        )
+        return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
 
 
 @router.get("/conversations")
@@ -217,12 +197,9 @@ async def list_conversations(
 @router.get("/history/{conversation_id}")
 async def get_history(conversation_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Message)
-        .where(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at)
+        select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at)
     )
-    messages = result.scalars().all()
-    return [{"role": m.role, "content": m.content, "created_at": str(m.created_at)} for m in messages]
+    return [{"role": m.role, "content": m.content, "created_at": str(m.created_at)} for m in result.scalars().all()]
 
 
 @router.delete("/conversations/{conversation_id}")
