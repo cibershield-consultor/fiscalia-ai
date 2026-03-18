@@ -1443,7 +1443,7 @@
 
 // Auto-detect: relative URL in production (Docker/nginx), direct in local dev
 const IS_DEV = window.location.hostname === 'localhost' && window.location.port === '8000';
-const API = 'https://fiscalia-backend.onrender.com/api';
+const API = IS_DEV ? 'http://127.0.0.1:8000/api' : '/api';
 
 // ── State ──────────────────────────────────────────────────
 const state = {
@@ -1511,6 +1511,7 @@ async function sendMessage() {
     const res = await fetch(`${API}/chat/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'omit',
       body: JSON.stringify({
         message: text,
         session_id: state.sessionId,
@@ -1643,7 +1644,7 @@ async function loadDashboard() {
   const q = state.currentPeriod > 0 ? `&trimestre=${state.currentPeriod}` : '';
 
   try {
-    const res = await fetch(`${API}/analysis/summary?año=${año}${q}`);
+    const res = await fetch(`${API}/analysis/summary?año=${año}${q}`, { credentials: 'omit' });
     if (!res.ok) throw new Error();
     const data = await res.json();
     renderDashboard(data);
@@ -1787,7 +1788,7 @@ async function submitInvoice() {
 
 async function loadInvoices() {
   try {
-    const res = await fetch(`${API}/invoices/`);
+    const res = await fetch(`${API}/invoices/`, { credentials: 'omit' });
     if (!res.ok) throw new Error();
     state.invoices = await res.json();
     renderInvoicesTable(state.invoices);
@@ -1923,7 +1924,7 @@ async function addTransaction() {
 
 async function loadTransactions() {
   try {
-    const res = await fetch(`${API}/analysis/transactions`);
+    const res = await fetch(`${API}/analysis/transactions`, { credentials: 'omit' });
     if (!res.ok) throw new Error();
     state.transactions = await res.json();
     renderTransactionsTable(state.transactions);

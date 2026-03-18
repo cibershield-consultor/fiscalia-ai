@@ -4,10 +4,12 @@ from contextlib import asynccontextmanager
 from app.core.database import init_db
 from app.routers import chat, analysis, invoices, auth, fiscal
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     yield
+
 
 app = FastAPI(
     title="Fiscalía IA — Asesor Financiero para Autónomos",
@@ -16,12 +18,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS — allow_credentials=True es incompatible con allow_origins=["*"]
+# Se listan los orígenes permitidos explícitamente
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://fiscalia-frontend.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5500",  # Live Server de VSCode
+        "null",                   # file:// (abrir index.html directamente)
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 app.include_router(auth.router,     prefix="/api/auth",     tags=["Autenticación"])
