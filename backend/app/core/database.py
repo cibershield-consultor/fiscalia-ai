@@ -1,3 +1,5 @@
+import re
+import ssl as ssl_module
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
@@ -6,12 +8,11 @@ from app.core.config import settings
 def get_db_url() -> str:
     url = settings.DATABASE_URL
 
-    # Remove sslmode param — asyncpg doesn't accept it in the URL
-    import re
-    url = re.sub(r'[?&]sslmode=[^&]*', '', url)
-    url = re.sub(r'[?&]ssl=[^&]*', '', url)
+    # Strip ALL query parameters — asyncpg receives ssl via connect_args instead
+    if "?" in url:
+        url = url.split("?")[0]
 
-    # Convert to asyncpg format
+    # Convert to asyncpg dialect
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif url.startswith("postgresql://") and "+asyncpg" not in url:
@@ -27,6 +28,11 @@ def is_postgres(url: str) -> bool:
 db_url = get_db_url()
 
 if is_postgres(db_url):
+    # Create SSL context for asyncpg
+    ssl_ctx = ssl_module.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl_module.CERT_NONE
+
     engine = create_async_engine(
         db_url,
         echo=False,
@@ -34,7 +40,7 @@ if is_postgres(db_url):
         pool_recycle=300,
         pool_size=5,
         max_overflow=10,
-        connect_args={"ssl": "require"},  # SSL passed directly to asyncpg, not in URL
+        connect_args={"ssl": ssl_ctx},
     )
 else:
     engine = create_async_engine(db_url, echo=False)
