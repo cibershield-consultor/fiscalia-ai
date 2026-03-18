@@ -600,7 +600,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
           <div class="input-box">
             <div class="input-actions-left">
               <button class="input-action-btn" id="attach-btn" onclick="triggerFileUpload()" title="Adjuntar imagen o PDF">📎</button>
-              <input type="file" id="file-input" style="display:none" accept="image/*,.pdf" onchange="handleFileSelect(event)">
+              <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.xlsx,.csv,.doc,.docx" multiple onchange="handleFileSelect(event)">
             </div>
             <textarea
               class="chat-input" id="chat-input"
@@ -932,7 +932,7 @@ const S = {
   user:null, token:null,
   sessionId: localStorage.getItem('sid') || crypto.randomUUID(),
   conversationId:null, conversations:[], loading:false,
-  attachedFile:null, invoices:[], currentQ:0,
+  attachedFile:null, attachedFiles:[], invoices:[], currentQ:0,
 };
 localStorage.setItem('sid', S.sessionId);
 
@@ -1070,23 +1070,67 @@ async function sendMessage() {
   input.value='';input.style.height='auto';
   showTyping(); setLoading(true);
   try {
-    const body={message:text,session_id:S.sessionId,conversation_id:S.conversationId||null,user_id:S.user?.id||null};
-    if(file){body.file_base64=file.base64;body.file_type=file.type;body.file_name=file.name;}
+    const body={
+      message:text,
+      session_id:S.sessionId,
+      conversation_id:S.conversationId||null,
+      user_id:S.user?.id||null,
+      stream:true,
+      files: S.attachedFiles && S.attachedFiles.length > 0
+        ? S.attachedFiles.map(f=>({base64:f.base64,type:f.type,name:f.name}))
+        : (file ? [{base64:file.base64,type:file.type,name:file.name}] : [])
+    };
+
+    // Use streaming fetch
     const r=await fetch(`${API}/chat/`,{
       method:'POST',
       headers:{'Content-Type':'application/json',...(S.token?{'Authorization':`Bearer ${S.token}`}:{})},
       credentials:'omit',
       body:JSON.stringify(body),
     });
-    const raw=await r.text();
-    let data;
-    try{data=JSON.parse(raw);}catch{throw new Error(`Respuesta inválida (${r.status})`);}
-    if(!r.ok)throw new Error(data?.detail||`Error ${r.status}`);
-    S.conversationId=data.conversation_id;
-    removeTyping();
-    appendMsg('assistant', data.answer);
-    // Check if AI response contains Excel/CSV generation trigger
-    checkForFileGeneration(data.answer);
+    if(!r.ok){const d=await r.json();throw new Error(d?.detail||`Error ${r.status}`);}
+
+    // Stream the response progressively
+    const reader=r.body.getReader();
+    const decoder=new TextDecoder();
+    let fullAnswer='';
+    let msgDiv=null;
+    let bubble=null;
+
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      const lines=decoder.decode(value).split('
+');
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue;
+        try{
+          const evt=JSON.parse(line.slice(5));
+          if(evt.chunk){
+            fullAnswer+=evt.chunk;
+            if(!msgDiv){
+              // Create message div on first chunk
+              removeTyping();
+              const container=document.getElementById('chat-messages');
+              const inner=container.querySelector('.chat-messages-inner');
+              msgDiv=document.createElement('div');msgDiv.className='msg-group';
+              msgDiv.innerHTML=`<div class="msg assistant"><div class="msg-avatar">⚖️</div><div class="msg-bubble" id="streaming-bubble"></div></div>`;
+              inner.appendChild(msgDiv);
+              bubble=msgDiv.querySelector('#streaming-bubble');
+            }
+            // Update bubble with rendered markdown — no scroll jump
+            bubble.innerHTML=renderMd(fullAnswer);
+          }
+          if(evt.done){
+            S.conversationId=evt.conversation_id;
+            if(bubble)bubble.removeAttribute('id');
+            checkForFileGeneration(fullAnswer);
+          }
+          if(evt.error) throw new Error(evt.error);
+        }catch(e){if(e.message&&e.message!=='JSON')console.warn(e);}
+      }
+    }
+
     if(S.user){S.user.messages_today=(S.user.messages_today||0)+1;updateLimitBar();}
     setTimeout(loadConversations,600);
   } catch(e){removeTyping();appendMsg('assistant',`⚠️ **Error:** ${e.message}`);}
@@ -1211,23 +1255,30 @@ function triggerFileUpload(){
   if(S.user?.plan!=='premium'&&S.user?.id){showPlanModal();return;}
   document.getElementById('file-input').click();
 }
-function handleFileSelect(e){const f=e.target.files[0];if(f)processFile(f);}
+function handleFileSelect(e){Array.from(e.target.files).forEach(f=>processFile(f));}
 function handleInvDrop(e){e.preventDefault();document.getElementById('upload-drop')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleInvFileData(f);}
 function handleInvFile(e){handleInvFileData(e.target.files[0]);}
 function handleInvFileData(file){toast(`📎 ${file.name} cargado`,'ok');toggleInvForm();}
 async function processFile(file){
   const reader=new FileReader();
   reader.onload=(e)=>{
-    S.attachedFile={base64:e.target.result.split(',')[1],type:file.type,name:file.name};
+    const fileObj={base64:e.target.result.split(',')[1],type:file.type,name:file.name};
+    S.attachedFile=fileObj;
+    if(!S.attachedFiles) S.attachedFiles=[];
+    S.attachedFiles.push(fileObj);
     const bar=document.getElementById('file-preview-bar');
-    if(bar){bar.classList.add('show');const fc=document.getElementById('file-preview-content');if(fc)fc.textContent=`📎 ${file.name}`;}
+    if(bar){
+      bar.classList.add('show');
+      const fc=document.getElementById('file-preview-content');
+      if(fc) fc.textContent=`📎 ${S.attachedFiles.map(f=>f.name).join(', ')} (${S.attachedFiles.length} archivo${S.attachedFiles.length>1?'s':''})`;
+    }
   };
   reader.readAsDataURL(file);
 }
 function removeFile(){
-  S.attachedFile=null;
+  S.attachedFile=null; S.attachedFiles=[];
   const bar=document.getElementById('file-preview-bar');
-  if(bar){bar.classList.remove('show');bar.innerHTML=`<span id="file-preview-content">📎 archivo</span><button class="file-preview-remove" onclick="removeFile()">✕</button>`;}
+  if(bar){bar.classList.remove('show');bar.innerHTML=`<span id="file-preview-content">📎 archivos</span><button class="file-preview-remove" onclick="removeFile()">✕</button>`;}
   const fi=document.getElementById('file-input');if(fi)fi.value='';
 }
 
@@ -1237,7 +1288,8 @@ function setQ(q,btn){currentQ=q;document.querySelectorAll('.filter-pill').forEac
 
 async function loadDashboard(){
   const yr=new Date().getFullYear(),q=currentQ>0?`&trimestre=${currentQ}`:'';
-  try{const r=await fetch(`${API}/analysis/summary?año=${yr}${q}`,{credentials:'omit'});if(!r.ok)throw '';renderDash(await r.json());}
+  try{const uid=S.user?.id||1;
+  const r=await fetch(`${API}/analysis/summary?año=${yr}${q}&user_id=${uid}`,{credentials:'omit'});if(!r.ok)throw '';renderDash(await r.json());}
   catch{renderDash({ingresos:0,gastos:0,beneficio:0,margen_pct:0,gastos_deducibles:0,iva_a_pagar:0,irpf_estimado:0,irpf_retenido:0,diferencia_irpf:0,num_transacciones:0,meses:{},categorias:{},insights:['💡 Añade facturas para ver tu análisis','📊 El dashboard se conecta con tus facturas automáticamente','🤖 La IA analiza tus datos en cada consulta']});}
 }
 function renderDash(d){
@@ -1280,7 +1332,8 @@ async function submitInvoice(){
   ['inv-tipo','inv-emisor','inv-concepto','inv-iva','inv-fecha'].forEach(id=>{const e=document.getElementById(id);if(e)fd.append(id.replace('inv-',''),e.value);});
   fd.append('base_imponible',document.getElementById('inv-base')?.value||'0');
   try{
-    const r=await fetch(`${API}/invoices/`,{method:'POST',body:fd,credentials:'omit'});
+    fd.append('user_id', S.user?.id||1);
+  const r=await fetch(`${API}/invoices/`,{method:'POST',body:fd,credentials:'omit'});
     if(!r.ok)throw new Error();
     const d=await r.json();
     toast(`✅ Factura guardada · Categoría: ${d.clasificacion_ia?.categoria||'otros'}`,'ok');
@@ -1288,7 +1341,8 @@ async function submitInvoice(){
   }catch{toast('❌ Error al guardar la factura','err');}
 }
 async function loadInvoices(){
-  try{const r=await fetch(`${API}/invoices/`,{credentials:'omit'});if(!r.ok)return;S.invoices=await r.json();renderInvTable(S.invoices);}
+  try{const uid=S.user?.id||1;
+  const r=await fetch(`${API}/invoices/?user_id=${uid}`,{credentials:'omit'});if(!r.ok)return;S.invoices=await r.json();renderInvTable(S.invoices);}
   catch{renderInvTable([]);}
 }
 function filterInv(tipo,btn){
@@ -1306,15 +1360,53 @@ function renderInvTable(list){
     <td><div style="font-weight:500">${escHtml(i.emisor||'—')}</div><div style="font-size:.74rem;color:var(--text3)">${escHtml(i.concepto||'')}</div></td>
     <td>${f(i.base_imponible)}</td><td>${i.tipo_iva}%</td>
     <td style="font-weight:600">${f(i.total)}</td>
-    <td><span class="badge b-cat">${i.categoria||'—'}</span></td>
-    <td>${i.deducible?'<span class="badge b-ded">✓ Sí</span>':'<span style="color:var(--text3);font-size:.75rem">No</span>'}</td>
+    <td>
+      <select class="inv-cat-select" onchange="updateInvoice(${i.id},'categoria',this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:.72rem;padding:3px 6px;border-radius:5px;max-width:140px">
+        ${Object.entries(PGC_CATS).map(([k,v])=>`<option value="${k}" ${i.categoria===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <select class="inv-ded-select" onchange="updateInvoiceDed(${i.id},this.value)" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-size:.72rem;padding:3px 6px;border-radius:5px">
+        <option value="100" ${i.porcentaje_deduccion===100?'selected':''}>100%</option>
+        <option value="50"  ${i.porcentaje_deduccion===50?'selected':''}>50%</option>
+        <option value="30"  ${i.porcentaje_deduccion===30?'selected':''}>30%</option>
+        <option value="0"   ${i.porcentaje_deduccion===0?'selected':''}>No ded.</option>
+      </select>
+    </td>
     <td><button class="btn btn-danger btn-sm" onclick="delInv(${i.id})">🗑</button></td>
   </tr>`).join('')}
   </tbody></table>`;
 }
+// PGC categories map for invoice table dropdowns
+const PGC_CATS = {
+  '600':'600-Compras mercaderías','601':'601-Mat.primas','620':'620-I+D',
+  '621':'621-Arrendamientos','622':'622-Reparaciones','623':'623-Prof.independientes',
+  '624':'624-Transportes','625':'625-Seguros','627':'627-Publicidad',
+  '628':'628-Suministros','629':'629-Otros servicios','640':'640-Sueldos',
+  '642':'642-SS empresa','660':'660-Gastos financieros','680':'680-Amort.intangible',
+  '681':'681-Amort.material','700':'700-Ventas','705':'705-Prestación servicios',
+  'otros':'Otros/Sin clasificar'
+};
+
+async function updateInvoice(id, field, value){
+  try{
+    const fd=new FormData();fd.append(field,value);
+    await fetch(`${API}/invoices/${id}`,{method:'PUT',body:fd,credentials:'omit'});
+  }catch(e){toast('❌ Error al actualizar','err');}
+}
+
+async function updateInvoiceDed(id, pct){
+  try{
+    const fd=new FormData();
+    fd.append('porcentaje_deduccion',pct);
+    fd.append('deducible', pct==='0'?'false':'true');
+    await fetch(`${API}/invoices/${id}`,{method:'PUT',body:fd,credentials:'omit'});
+  }catch(e){toast('❌ Error al actualizar','err');}
+}
+
 async function delInv(id){
   if(!confirm('¿Eliminar factura?'))return;
-  try{await fetch(`${API}/invoices/${id}`,{method:'DELETE',credentials:'omit'});loadInvoices();toast('🗑 Eliminada','ok');}catch{}
+  try{await fetch(`${API}/invoices/${id}?user_id=${S.user?.id||1}`,{method:'DELETE',credentials:'omit'});loadInvoices();toast('🗑 Eliminada','ok');}catch{}
 }
 
 // ── Plan Modal ────────────────────────────────────────────────
