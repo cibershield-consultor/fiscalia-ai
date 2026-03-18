@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
-import uuid, traceback, json
+import uuid, traceback, json, base64
 from datetime import datetime
 from app.core.database import get_db
 from app.models.conversation import Conversation, Message
@@ -20,9 +20,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     conversation_id: Optional[int] = None
     user_id: Optional[int] = None
-    # Multiple file support
     files: Optional[list[dict]] = None  # [{base64, type, name}, ...]
-    # Keep single file for backwards compat
     file_base64: Optional[str] = None
     file_type: Optional[str] = None
     file_name: Optional[str] = None
@@ -75,11 +73,45 @@ Categorías principales: {', '.join(f'{c}:{a:.0f}€' for c,a in top_cats)}
 Últimas facturas:
 {recent_lines}
 
-INSTRUCCIÓN: Usa estos datos para personalizar respuestas. Habla en primera persona al usuario ("tus facturas muestran..."). Pero NO asumas el tipo de contribuyente si no lo ha indicado.
+INSTRUCCIÓN: Usa estos datos para personalizar respuestas. Habla en primera persona al usuario.
+NO asumas el tipo de contribuyente si no lo ha indicado explícitamente.
 == FIN DATOS =="""
     except Exception:
         traceback.print_exc()
         return ""
+
+
+def extract_pdf_text(b64_data: str) -> str:
+    """Extrae texto de PDF usando base64. Retorna texto plano."""
+    try:
+        import io
+        pdf_bytes = base64.b64decode(b64_data)
+        # Try PyPDF2 or pypdf
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+            texts = []
+            for page in reader.pages[:10]:  # max 10 pages
+                txt = page.extract_text()
+                if txt:
+                    texts.append(txt)
+            return "\n".join(texts)[:6000]
+        except ImportError:
+            pass
+        try:
+            import PyPDF2
+            reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
+            texts = []
+            for page in reader.pages[:10]:
+                txt = page.extract_text()
+                if txt:
+                    texts.append(txt)
+            return "\n".join(texts)[:6000]
+        except ImportError:
+            pass
+        return "[PDF adjunto - no se pudo extraer texto. Instala pypdf: pip install pypdf]"
+    except Exception as e:
+        return f"[Error procesando PDF: {str(e)[:100]}]"
 
 
 @router.post("/")
@@ -87,7 +119,6 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     try:
         session_id = req.session_id or str(uuid.uuid4())
 
-        # Get or create conversation
         conversation = None
         if req.conversation_id:
             result = await db.execute(select(Conversation).where(Conversation.id == req.conversation_id))
@@ -100,38 +131,50 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             await db.commit()
             await db.refresh(conversation)
 
-        # Load history
         result = await db.execute(
             select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)
         )
         history = [{"role": m.role, "content": m.content} for m in result.scalars().all()]
 
-        # Financial context (only for logged in users)
         financial_context = ""
         if req.user_id:
             financial_context = await build_financial_context(req.user_id, db)
 
-        # Handle files — support multiple
+        # Handle multiple files
         files = req.files or []
-        # Backwards compat: single file
         if req.file_base64 and req.file_type:
             files.append({"base64": req.file_base64, "type": req.file_type, "name": req.file_name or "archivo"})
 
-        # For now use first image for vision (Groq supports one image)
         image_b64, image_type = None, None
+        pdf_texts = []
         file_descriptions = []
-        for f in files:
-            if f.get("type","").startswith("image/") and not image_b64:
-                image_b64 = f["base64"]
-                image_type = f["type"]
-            file_descriptions.append(f.get("name","archivo"))
 
-        # Build message content
+        for f in files:
+            ftype = f.get("type", "")
+            fname = f.get("name", "archivo")
+            fb64 = f.get("base64", "")
+
+            if ftype.startswith("image/") and not image_b64:
+                image_b64 = fb64
+                image_type = ftype
+                file_descriptions.append(f"🖼️ {fname}")
+            elif ftype == "application/pdf" or fname.lower().endswith(".pdf"):
+                pdf_text = extract_pdf_text(fb64)
+                pdf_texts.append(f"=== {fname} ===\n{pdf_text}")
+                file_descriptions.append(f"📄 {fname}")
+            else:
+                # Try to decode as text
+                try:
+                    text_content = base64.b64decode(fb64).decode("utf-8", errors="replace")
+                    pdf_texts.append(f"=== {fname} ===\n{text_content[:3000]}")
+                    file_descriptions.append(f"📎 {fname}")
+                except Exception:
+                    file_descriptions.append(f"📎 {fname}")
+
         message_text = req.message
         if file_descriptions:
             message_text = f"[Archivos adjuntos: {', '.join(file_descriptions)}]\n{req.message}"
 
-        # STREAMING response
         if req.stream:
             async def generate():
                 full_answer = ""
@@ -142,11 +185,11 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
                         context=financial_context or None,
                         image_base64=image_b64,
                         image_media_type=image_type,
+                        pdf_texts=pdf_texts if pdf_texts else None,
                     ):
                         full_answer += chunk
                         yield f"data: {json.dumps({'chunk': chunk})}\n\n"
 
-                    # Save to DB after streaming completes
                     db.add(Message(conversation_id=conversation.id, role="user", content=message_text))
                     db.add(Message(conversation_id=conversation.id, role="assistant", content=full_answer))
                     await db.commit()
@@ -158,13 +201,13 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             return StreamingResponse(generate(), media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
-        # NON-STREAMING response
         answer = await ask_ai(
             req.message,
             conversation_history=history,
             context=financial_context or None,
             image_base64=image_b64,
             image_media_type=image_type,
+            pdf_texts=pdf_texts if pdf_texts else None,
         )
 
         db.add(Message(conversation_id=conversation.id, role="user", content=message_text))
