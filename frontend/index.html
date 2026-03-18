@@ -1519,16 +1519,40 @@ async function sendMessage() {
       }),
     });
 
-    if (!res.ok) throw new Error('Error en el servidor');
-    const data = await res.json();
+    // Leer el body siempre, sea error o no
+    const rawText = await res.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(`El servidor devolvió una respuesta inválida (HTTP ${res.status}):\n${rawText.slice(0, 300)}`);
+    }
+
+    if (!res.ok) {
+      // Mostrar el error real del servidor (FastAPI devuelve {detail: "..."})
+      const detail = data?.detail || JSON.stringify(data);
+      throw new Error(`Error del servidor (HTTP ${res.status}): ${detail}`);
+    }
 
     state.conversationId = data.conversation_id;
     removeTyping();
     addMessage('assistant', data.answer);
   } catch (err) {
     removeTyping();
-    addMessage('assistant', `⚠️ **Error de conexión**\n\nNo se pudo conectar con el servidor. Asegúrate de que el backend está ejecutándose:\n\`\`\`\ncd backend && uvicorn app.main:app --reload\n\`\`\``);
-    console.error(err);
+    const errMsg = err?.message || String(err);
+    console.error('Chat error:', err);
+    addMessage('assistant', `⚠️ **Error de conexión**
+
+**URL que se intentó contactar:** ${API}/chat/
+
+**Error técnico:** ${errMsg}
+
+**Pasos para diagnosticar:**
+1. Abre esta URL en el navegador: [${API.replace('/api','')}](${API.replace('/api','')})
+2. Si no carga → el backend está caído en Render (revisa los logs)
+3. Si carga → abre F12 → Console y copia el error rojo exacto
+
+**Backend en Render:** https://fiscalia-backend.onrender.com`);
   } finally {
     setLoading(false);
   }
@@ -1979,6 +2003,55 @@ function toast(message, type = 'success') {
   container.appendChild(el);
   setTimeout(() => el.remove(), 4000);
 }
+
+// ── Diagnóstico ────────────────────────────────────────────
+// Ejecuta esto en la consola del navegador (F12) para diagnosticar:
+// await diagnostico()
+window.diagnostico = async function() {
+  console.log('🔍 Iniciando diagnóstico...');
+  console.log('📍 API URL configurada:', API);
+  
+  const tests = [
+    { url: API.replace('/api', '/'), label: 'Raíz del backend' },
+    { url: API.replace('/api', '/docs'), label: 'Swagger docs' },
+    { url: `${API}/chat/`, label: 'Endpoint chat', method: 'OPTIONS' },
+  ];
+  
+  for (const test of tests) {
+    try {
+      const r = await fetch(test.url, { 
+        method: test.method || 'GET',
+        credentials: 'omit',
+        signal: AbortSignal.timeout(8000)
+      });
+      console.log(`✅ ${test.label} → HTTP ${r.status}`);
+    } catch(e) {
+      console.error(`❌ ${test.label} → ${e.message}`);
+    }
+  }
+  console.log('✅ Diagnóstico completo. Revisa los resultados arriba.');
+};
+console.log('💡 Tip: ejecuta await diagnostico() en esta consola para diagnosticar problemas de conexión');
+
+// Test directo del chat — ejecuta en consola: await testChat()
+window.testChat = async function() {
+  console.log('🔍 Probando endpoint /api/chat/ ...');
+  try {
+    const r = await fetch(`${API}/chat/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'omit',
+      body: JSON.stringify({ message: 'hola', session_id: 'test-123' }),
+    });
+    const text = await r.text();
+    console.log('HTTP Status:', r.status);
+    console.log('Response body:', text);
+    try { console.log('Parsed JSON:', JSON.parse(text)); } catch {}
+  } catch(e) {
+    console.error('Fetch error:', e.message);
+  }
+};
+console.log('💡 También puedes ejecutar: await testChat()');
 
 // ── Init ───────────────────────────────────────────────────
 document.getElementById('inv-fecha').value = new Date().toISOString().split('T')[0];
