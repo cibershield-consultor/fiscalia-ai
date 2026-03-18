@@ -6,22 +6,16 @@ from app.core.config import settings
 def get_db_url() -> str:
     url = settings.DATABASE_URL
 
-    # Already correctly formatted
-    if "postgresql+asyncpg" in url:
-        if "ssl=require" not in url and "sslmode" not in url:
-            url += "?ssl=require"
-        return url
+    # Remove sslmode param — asyncpg doesn't accept it in the URL
+    import re
+    url = re.sub(r'[?&]sslmode=[^&]*', '', url)
+    url = re.sub(r'[?&]ssl=[^&]*', '', url)
 
-    # Convert postgres:// or postgresql:// to asyncpg format
+    # Convert to asyncpg format
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif url.startswith("postgresql://"):
+    elif url.startswith("postgresql://") and "+asyncpg" not in url:
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-
-    # Add SSL if it's a remote PostgreSQL (Supabase, etc.)
-    if "postgresql+asyncpg" in url and "localhost" not in url and "127.0.0.1" not in url:
-        separator = "&" if "?" in url else "?"
-        url += f"{separator}ssl=require"
 
     return url
 
@@ -40,6 +34,7 @@ if is_postgres(db_url):
         pool_recycle=300,
         pool_size=5,
         max_overflow=10,
+        connect_args={"ssl": "require"},  # SSL passed directly to asyncpg, not in URL
     )
 else:
     engine = create_async_engine(db_url, echo=False)
