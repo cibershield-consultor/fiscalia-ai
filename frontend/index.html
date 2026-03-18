@@ -1,0 +1,1987 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiscalía IA — Asesor Fiscal para Autónomos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       DESIGN SYSTEM — Fiscalía IA
+       Aesthetic: Refined editorial · Tax office meets fintech
+       Palette: Deep navy · Warm gold · Cream parchment
+    ============================================================ */
+    :root {
+      --navy:       #0d1b2a;
+      --navy-mid:   #162032;
+      --navy-light: #1e2d40;
+      --gold:       #c9a84c;
+      --gold-light: #e4c97e;
+      --gold-pale:  #f5e9c4;
+      --cream:      #faf7f0;
+      --cream-dark: #f0ead9;
+      --text:       #0d1b2a;
+      --text-muted: #5a6a7a;
+      --border:     rgba(201,168,76,0.2);
+      --shadow:     0 4px 24px rgba(13,27,42,0.12);
+      --radius:     12px;
+
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body:    'DM Sans', system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--navy);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── BACKGROUND TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 20%, rgba(201,168,76,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 90% 80%, rgba(201,168,76,0.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── APP SHELL ── */
+    .app {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      grid-row: 1 / 3;
+      background: var(--navy-mid);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-logo {
+      padding: 28px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .logo-text h1 {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      color: var(--cream);
+      line-height: 1.2;
+    }
+
+    .logo-text span {
+      font-size: 0.7rem;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 500;
+    }
+
+    .sidebar-nav {
+      padding: 16px 12px;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      color: rgba(250,247,240,0.65);
+      font-size: 0.875rem;
+      font-weight: 400;
+      margin-bottom: 2px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: rgba(201,168,76,0.08); color: var(--cream); }
+
+    .nav-item.active {
+      background: rgba(201,168,76,0.15);
+      color: var(--gold-light);
+      font-weight: 500;
+    }
+
+    .nav-item .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.25);
+      color: var(--gold-light);
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+    }
+
+    .pill-badge::before { content: '●'; font-size: 0.5rem; color: #4caf8a; }
+
+    /* ── HEADER ── */
+    .header {
+      grid-column: 2;
+      background: rgba(13,27,42,0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-title {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--cream);
+    }
+
+    .header-title span { color: var(--gold); }
+
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      border: none;
+    }
+
+    .btn-ghost {
+      background: rgba(250,247,240,0.05);
+      color: rgba(250,247,240,0.7);
+      border: 1px solid rgba(250,247,240,0.1);
+    }
+
+    .btn-ghost:hover { background: rgba(250,247,240,0.1); color: var(--cream); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      color: var(--navy);
+      font-weight: 600;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(201,168,76,0.3); }
+
+    .btn-danger { background: rgba(220,60,60,0.15); color: #ff7070; border: 1px solid rgba(220,60,60,0.2); }
+    .btn-danger:hover { background: rgba(220,60,60,0.25); }
+
+    /* ── MAIN CONTENT ── */
+    .main {
+      grid-column: 2;
+      overflow-y: auto;
+      height: calc(100vh - 64px);
+    }
+
+    .view { display: none; height: 100%; }
+    .view.active { display: flex; flex-direction: column; }
+
+    /* ============================================================
+       CHAT VIEW
+    ============================================================ */
+    .chat-view {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .chat-welcome {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .chat-welcome .welcome-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .chat-welcome h2 {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      color: var(--cream);
+      margin-bottom: 8px;
+    }
+
+    .chat-welcome h2 em { color: var(--gold); font-style: italic; }
+
+    .chat-welcome p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 480px;
+      margin: 0 auto 32px;
+      line-height: 1.6;
+    }
+
+    .quick-questions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .quick-q {
+      background: rgba(201,168,76,0.08);
+      border: 1px solid rgba(201,168,76,0.2);
+      color: var(--gold-pale);
+      padding: 8px 14px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-family: var(--font-body);
+    }
+
+    .quick-q:hover {
+      background: rgba(201,168,76,0.18);
+      border-color: rgba(201,168,76,0.4);
+      transform: translateY(-1px);
+    }
+
+    .message {
+      display: flex;
+      gap: 14px;
+      animation: msgIn 0.3s ease;
+    }
+
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user { flex-direction: row-reverse; }
+
+    .message-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .message.user .message-avatar {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      color: var(--navy);
+      font-weight: 700;
+    }
+
+    .message.assistant .message-avatar {
+      background: rgba(201,168,76,0.15);
+      border: 1px solid rgba(201,168,76,0.25);
+      color: var(--gold);
+    }
+
+    .message-bubble {
+      max-width: 72%;
+      padding: 14px 18px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
+    .message.user .message-bubble {
+      background: linear-gradient(135deg, #1a3a5c, #1e4570);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 16px 4px 16px 16px;
+      color: var(--cream);
+    }
+
+    .message.assistant .message-bubble {
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: 4px 16px 16px 16px;
+      color: rgba(250,247,240,0.9);
+    }
+
+    .message.assistant .message-bubble h2,
+    .message.assistant .message-bubble h3 {
+      font-family: var(--font-display);
+      color: var(--gold-light);
+      margin: 12px 0 6px;
+      font-size: 1rem;
+    }
+
+    .message.assistant .message-bubble ul,
+    .message.assistant .message-bubble ol {
+      padding-left: 18px;
+      margin: 8px 0;
+    }
+
+    .message.assistant .message-bubble li { margin-bottom: 4px; }
+
+    .message.assistant .message-bubble strong { color: var(--gold-pale); }
+
+    .message.assistant .message-bubble code {
+      background: rgba(201,168,76,0.12);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.85em;
+      color: var(--gold-light);
+    }
+
+    .message.assistant .message-bubble hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 12px 0;
+    }
+
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 14px 18px;
+    }
+
+    .typing-dot {
+      width: 6px; height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      animation: typingBounce 1.2s infinite ease-in-out;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* Chat Input */
+    .chat-input-area {
+      padding: 20px 32px 28px;
+      border-top: 1px solid var(--border);
+      background: rgba(13,27,42,0.6);
+      backdrop-filter: blur(8px);
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: rgba(201,168,76,0.5);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.08);
+    }
+
+    .chat-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--cream);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      resize: none;
+      min-height: 24px;
+      max-height: 120px;
+      line-height: 1.5;
+    }
+
+    .chat-input::placeholder { color: rgba(250,247,240,0.3); }
+
+    .send-btn {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      color: var(--navy);
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      transition: all 0.18s;
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
+
+    .send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(201,168,76,0.3); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .input-hint {
+      text-align: center;
+      font-size: 0.7rem;
+      color: rgba(250,247,240,0.25);
+      margin-top: 8px;
+    }
+
+    /* ============================================================
+       DASHBOARD VIEW
+    ============================================================ */
+    .dashboard-view {
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .dashboard-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .dashboard-header h2 {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--cream);
+    }
+
+    .dashboard-header h2 span { color: var(--gold); }
+
+    .period-selector {
+      display: flex;
+      gap: 4px;
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .period-btn {
+      padding: 6px 14px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      color: rgba(250,247,240,0.5);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-weight: 500;
+    }
+
+    .period-btn.active {
+      background: rgba(201,168,76,0.18);
+      color: var(--gold-light);
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .kpi-card:hover { border-color: rgba(201,168,76,0.35); transform: translateY(-2px); }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--gradient);
+    }
+
+    .kpi-card.income::after { background: linear-gradient(90deg, #4caf8a, #81d4b0); }
+    .kpi-card.expense::after { background: linear-gradient(90deg, #e57373, #ff8a80); }
+    .kpi-card.profit::after { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
+    .kpi-card.tax::after { background: linear-gradient(90deg, #7986cb, #9fa8da); }
+
+    .kpi-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .kpi-value {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      color: var(--cream);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .kpi-value.income-val { color: #81d4b0; }
+    .kpi-value.expense-val { color: #ff8a80; }
+    .kpi-value.profit-val { color: var(--gold-light); }
+
+    .kpi-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kpi-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2rem;
+      opacity: 0.08;
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--cream);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title .card-badge {
+      font-family: var(--font-body);
+      font-size: 0.7rem;
+      background: rgba(201,168,76,0.12);
+      color: var(--gold);
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-weight: 500;
+    }
+
+    /* Bar Chart */
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 140px;
+      margin-bottom: 12px;
+    }
+
+    .bar-group {
+      flex: 1;
+      display: flex;
+      gap: 3px;
+      align-items: flex-end;
+      height: 100%;
+    }
+
+    .bar {
+      flex: 1;
+      border-radius: 4px 4px 0 0;
+      transition: opacity 0.2s;
+      min-height: 4px;
+    }
+
+    .bar:hover { opacity: 0.8; }
+    .bar.income-bar { background: linear-gradient(180deg, #4caf8a, #388e6a); }
+    .bar.expense-bar { background: linear-gradient(180deg, #e57373, #c62828); }
+
+    .bar-labels {
+      display: flex;
+      gap: 8px;
+    }
+
+    .bar-label {
+      flex: 1;
+      text-align: center;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    /* Insights Panel */
+    .insights-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .insight-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px;
+      background: rgba(201,168,76,0.04);
+      border: 1px solid rgba(201,168,76,0.1);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: rgba(250,247,240,0.8);
+      line-height: 1.5;
+      animation: msgIn 0.3s ease;
+    }
+
+    .insight-icon { flex-shrink: 0; font-size: 1rem; }
+
+    /* Tax Summary */
+    .tax-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(201,168,76,0.08);
+      font-size: 0.85rem;
+    }
+
+    .tax-row:last-child { border-bottom: none; }
+    .tax-row .label { color: var(--text-muted); }
+    .tax-row .amount { font-weight: 600; color: var(--cream); }
+    .tax-row .amount.highlight { color: var(--gold-light); }
+    .tax-row .amount.danger { color: #ff8a80; }
+    .tax-row .amount.success { color: #81d4b0; }
+
+    /* ============================================================
+       INVOICES VIEW
+    ============================================================ */
+    .invoices-view {
+      padding: 32px;
+    }
+
+    .invoices-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .invoices-header h2 {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--cream);
+    }
+
+    .invoices-header h2 span { color: var(--gold); }
+
+    /* Upload Zone */
+    .upload-zone {
+      border: 2px dashed rgba(201,168,76,0.25);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 28px;
+      background: rgba(201,168,76,0.03);
+    }
+
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: rgba(201,168,76,0.5);
+      background: rgba(201,168,76,0.07);
+    }
+
+    .upload-icon { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .upload-title { font-family: var(--font-display); font-size: 1.1rem; color: var(--cream); margin-bottom: 6px; }
+    .upload-sub { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Invoice Form */
+    .invoice-form {
+      display: none;
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .invoice-form.open { display: block; animation: msgIn 0.3s ease; }
+    .invoice-form h3 { font-family: var(--font-display); font-size: 1.1rem; color: var(--cream); margin-bottom: 20px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; }
+
+    input, select, textarea {
+      background: rgba(13,27,42,0.6);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 8px;
+      color: var(--cream);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(201,168,76,0.4);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.08);
+    }
+
+    select option { background: var(--navy); }
+
+    .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+    /* Invoice Table */
+    .invoices-table-wrap {
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .table-title { font-weight: 600; font-size: 0.9rem; color: var(--cream); }
+
+    .filter-tabs { display: flex; gap: 4px; }
+
+    .filter-tab {
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: none;
+      background: none;
+      color: rgba(250,247,240,0.45);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-weight: 500;
+    }
+
+    .filter-tab.active { background: rgba(201,168,76,0.15); color: var(--gold-light); }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      padding: 12px 20px;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      font-weight: 600;
+      background: rgba(13,27,42,0.3);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px 20px;
+      font-size: 0.84rem;
+      border-bottom: 1px solid rgba(201,168,76,0.05);
+      color: rgba(250,247,240,0.85);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(201,168,76,0.03); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 100px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .badge-income { background: rgba(76,175,138,0.15); color: #81d4b0; }
+    .badge-expense { background: rgba(229,115,115,0.15); color: #ff8a80; }
+    .badge-deductible { background: rgba(201,168,76,0.15); color: var(--gold-light); }
+    .badge-category { background: rgba(121,134,203,0.15); color: #9fa8da; }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 16px; display: block; opacity: 0.5; }
+    .empty-state h3 { font-family: var(--font-display); font-size: 1.2rem; color: var(--cream); margin-bottom: 8px; }
+    .empty-state p { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ============================================================
+       TRANSACTIONS VIEW
+    ============================================================ */
+    .transactions-view { padding: 32px; }
+
+    .transactions-view h2 {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      color: var(--cream);
+      margin-bottom: 28px;
+    }
+
+    .transactions-view h2 span { color: var(--gold); }
+
+    .tx-form {
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .tx-form h3 { font-family: var(--font-display); font-size: 1.05rem; color: var(--cream); margin-bottom: 16px; }
+
+    .tipo-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tipo-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: none;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-weight: 500;
+      color: rgba(250,247,240,0.5);
+    }
+
+    .tipo-btn.income.active { border-color: #4caf8a; background: rgba(76,175,138,0.12); color: #81d4b0; }
+    .tipo-btn.expense.active { border-color: #e57373; background: rgba(229,115,115,0.12); color: #ff8a80; }
+
+    /* ============================================================
+       SCROLLBARS
+    ============================================================ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.35); }
+
+    /* ============================================================
+       TOAST NOTIFICATIONS
+    ============================================================ */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--navy-mid);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: var(--cream);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow);
+      animation: slideInToast 0.3s ease;
+      min-width: 280px;
+    }
+
+    .toast.success { border-color: rgba(76,175,138,0.3); }
+    .toast.error { border-color: rgba(229,115,115,0.3); }
+
+    @keyframes slideInToast {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ============================================================
+       LOADING / SPINNER
+    ============================================================ */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(201,168,76,0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 1100px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+      }
+      .sidebar {
+        grid-row: 1;
+        position: static;
+        height: auto;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 8px;
+      }
+      .sidebar-logo { display: none; }
+      .sidebar-footer { display: none; }
+      .sidebar-nav {
+        display: flex;
+        flex-direction: row;
+        padding: 0;
+        gap: 4px;
+      }
+      .nav-section-label { display: none; }
+      .nav-item { white-space: nowrap; }
+      .header { grid-column: 1; }
+      .main { grid-column: 1; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── MARKDOWN RENDERING ── */
+    .message-bubble p { margin-bottom: 8px; }
+    .message-bubble p:last-child { margin-bottom: 0; }
+    .message-bubble ul { margin-bottom: 8px; }
+    .message-bubble h2 { font-size: 1rem; }
+    .message-bubble h3 { font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ════════════════════════════════
+       SIDEBAR
+  ════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">⚖️</div>
+        <div class="logo-text">
+          <h1>Fiscalía IA</h1>
+          <span>Asesor Fiscal · España</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <button class="nav-item active" onclick="showView('chat')">
+        <span class="nav-icon">💬</span> Chat con IA
+      </button>
+      <button class="nav-item" onclick="showView('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" onclick="showView('invoices')">
+        <span class="nav-icon">🧾</span> Facturas
+      </button>
+      <button class="nav-item" onclick="showView('transactions')">
+        <span class="nav-icon">💶</span> Ingresos / Gastos
+      </button>
+
+      <div class="nav-section-label" style="margin-top:16px">Fiscal</div>
+      <button class="nav-item" onclick="askAbout('¿Cuánto IVA debo pagar este trimestre?')">
+        <span class="nav-icon">📋</span> Calcular IVA
+      </button>
+      <button class="nav-item" onclick="askAbout('Explícame los tramos del IRPF para autónomos en 2024')">
+        <span class="nav-icon">📈</span> Tramos IRPF
+      </button>
+      <button class="nav-item" onclick="askAbout('¿Qué gastos son deducibles para un autónomo?')">
+        <span class="nav-icon">✅</span> Gastos Deducibles
+      </button>
+      <button class="nav-item" onclick="askAbout('¿Cuáles son los plazos de las declaraciones trimestrales?')">
+        <span class="nav-icon">📅</span> Calendarios
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="pill-badge">API Conectada</div>
+    </div>
+  </aside>
+
+  <!-- ════════════════════════════════
+       HEADER
+  ════════════════════════════════ -->
+  <header class="header">
+    <div class="header-title" id="page-title">Chat con <span>IA Fiscal</span></div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" onclick="clearChat()">🗑 Nueva conversación</button>
+      <button class="btn btn-primary" onclick="showView('invoices')">+ Añadir factura</button>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════
+       MAIN
+  ════════════════════════════════ -->
+  <main class="main">
+
+    <!-- ── CHAT VIEW ── -->
+    <div class="view chat-view active" id="view-chat">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-welcome">
+          <span class="welcome-icon">⚖️</span>
+          <h2>Hola, soy tu asesor <em>fiscal IA</em></h2>
+          <p>Especializado en autónomos españoles. Pregúntame sobre IVA, IRPF, gastos deducibles, modelos tributarios o cualquier duda fiscal.</p>
+          <div class="quick-questions">
+            <button class="quick-q" onclick="sendQuick('¿Qué gastos puedo deducir como autónomo?')">💼 Gastos deducibles</button>
+            <button class="quick-q" onclick="sendQuick('¿Cuánto IVA debo cobrar en mis facturas?')">📋 IVA en facturas</button>
+            <button class="quick-q" onclick="sendQuick('¿Cuándo son las declaraciones trimestrales?')">📅 Plazos trimestrales</button>
+            <button class="quick-q" onclick="sendQuick('¿Cuánto pagaré de IRPF si gano 40.000€?')">📊 Calcular IRPF</button>
+            <button class="quick-q" onclick="sendQuick('¿Puedo deducir el teléfono móvil?')">📱 Deducir móvil</button>
+            <button class="quick-q" onclick="sendQuick('¿Qué es la tarifa plana para autónomos?')">🆕 Tarifa plana</button>
+            <button class="quick-q" onclick="sendQuick('¿Qué modelos tengo que presentar cada trimestre?')">📝 Modelos fiscales</button>
+            <button class="quick-q" onclick="sendQuick('¿Puedo trabajar desde casa y deducir el alquiler?')">🏠 Trabajar desde casa</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="input-wrapper">
+          <textarea
+            class="chat-input"
+            id="chat-input"
+            placeholder="Pregunta sobre IVA, IRPF, gastos deducibles, modelos..."
+            rows="1"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"
+          ></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">➤</button>
+        </div>
+        <p class="input-hint">Enter para enviar · Shift+Enter para nueva línea · Powered by OpenAI GPT-4.1 mini</p>
+      </div>
+    </div>
+
+    <!-- ── DASHBOARD VIEW ── -->
+    <div class="view" id="view-dashboard">
+      <div class="dashboard-view">
+        <div class="dashboard-header">
+          <div>
+            <h2>Dashboard <span>Financiero</span></h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+              Resumen fiscal y análisis IA en tiempo real
+            </p>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center">
+            <div class="period-selector">
+              <button class="period-btn active" onclick="setPeriod(0, this)">Año completo</button>
+              <button class="period-btn" onclick="setPeriod(1, this)">T1</button>
+              <button class="period-btn" onclick="setPeriod(2, this)">T2</button>
+              <button class="period-btn" onclick="setPeriod(3, this)">T3</button>
+              <button class="period-btn" onclick="setPeriod(4, this)">T4</button>
+            </div>
+            <button class="btn btn-primary" onclick="loadDashboard()">↻ Actualizar</button>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid" id="kpi-grid">
+          <div class="kpi-card income">
+            <div class="kpi-label">Ingresos Totales</div>
+            <div class="kpi-value income-val" id="kpi-ingresos">—</div>
+            <div class="kpi-meta" id="kpi-ingresos-meta">Cargando...</div>
+            <div class="kpi-icon">💰</div>
+          </div>
+          <div class="kpi-card expense">
+            <div class="kpi-label">Gastos Totales</div>
+            <div class="kpi-value expense-val" id="kpi-gastos">—</div>
+            <div class="kpi-meta" id="kpi-gastos-meta">Cargando...</div>
+            <div class="kpi-icon">💸</div>
+          </div>
+          <div class="kpi-card profit">
+            <div class="kpi-label">Beneficio Neto</div>
+            <div class="kpi-value profit-val" id="kpi-beneficio">—</div>
+            <div class="kpi-meta" id="kpi-margen">Margen: —</div>
+            <div class="kpi-icon">📈</div>
+          </div>
+          <div class="kpi-card tax">
+            <div class="kpi-label">IVA a Ingresar</div>
+            <div class="kpi-value" id="kpi-iva" style="color: #9fa8da">—</div>
+            <div class="kpi-meta" id="kpi-irpf-meta">IRPF est.: —</div>
+            <div class="kpi-icon">🏛</div>
+          </div>
+        </div>
+
+        <!-- Chart + Insights -->
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-title">
+              Ingresos vs Gastos por Mes
+              <span class="card-badge">Año actual</span>
+            </div>
+            <div class="bar-chart" id="bar-chart">
+              <div style="color: var(--text-muted); font-size: 0.85rem; text-align:center; flex:1; display:flex; align-items:center; justify-content:center;">
+                Añade transacciones para ver el gráfico
+              </div>
+            </div>
+            <div class="bar-labels" id="bar-labels"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Insights <span class="card-badge">IA</span></div>
+            <div class="insights-list" id="insights-list">
+              <div class="insight-item">
+                <span class="insight-icon">💡</span>
+                Cargando insights de IA...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tax Summary -->
+        <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+          <div class="card">
+            <div class="card-title">Resumen Fiscal Trimestral</div>
+            <div id="tax-summary">
+              <div class="tax-row">
+                <span class="label">Base imponible (IVA repercutido)</span>
+                <span class="amount" id="ts-base">—</span>
+              </div>
+              <div class="tax-row">
+                <span class="label">IVA soportado (deducible)</span>
+                <span class="amount success" id="ts-iva-sop">—</span>
+              </div>
+              <div class="tax-row">
+                <span class="label">IVA a ingresar (Modelo 303)</span>
+                <span class="amount highlight" id="ts-iva-pagar">—</span>
+              </div>
+              <div class="tax-row">
+                <span class="label">IRPF retenido en facturas</span>
+                <span class="amount success" id="ts-irpf-ret">—</span>
+              </div>
+              <div class="tax-row">
+                <span class="label">IRPF estimado a pagar</span>
+                <span class="amount danger" id="ts-irpf-est">—</span>
+              </div>
+              <div class="tax-row">
+                <span class="label">Diferencia IRPF</span>
+                <span class="amount" id="ts-irpf-diff">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Gastos por Categoría</div>
+            <div id="category-breakdown">
+              <div style="color: var(--text-muted); font-size: 0.85rem;">
+                Añade facturas para ver el desglose
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INVOICES VIEW ── -->
+    <div class="view" id="view-invoices">
+      <div class="invoices-view">
+        <div class="invoices-header">
+          <div>
+            <h2>Gestión de <span>Facturas</span></h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+              Clasificación automática con IA
+            </p>
+          </div>
+          <button class="btn btn-primary" onclick="toggleInvoiceForm()">+ Nueva Factura</button>
+        </div>
+
+        <!-- Upload zone -->
+        <div class="upload-zone" id="upload-zone"
+             onclick="document.getElementById('file-input').click()"
+             ondragover="handleDragOver(event)"
+             ondrop="handleDrop(event)"
+             ondragleave="this.classList.remove('drag-over')">
+          <span class="upload-icon">📂</span>
+          <div class="upload-title">Arrastra tu factura aquí o haz clic</div>
+          <div class="upload-sub">PDF, JPG, PNG · La IA clasificará el gasto automáticamente</div>
+          <input type="file" id="file-input" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- Invoice Form -->
+        <div class="invoice-form" id="invoice-form">
+          <h3>📝 Nueva Factura</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Tipo</label>
+              <select id="inv-tipo">
+                <option value="gasto">Gasto</option>
+                <option value="ingreso">Ingreso</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Emisor / Proveedor</label>
+              <input type="text" id="inv-emisor" placeholder="ej. Amazon, Telefónica, Freelance">
+            </div>
+            <div class="form-group full">
+              <label>Concepto</label>
+              <input type="text" id="inv-concepto" placeholder="Descripción del servicio o producto">
+            </div>
+            <div class="form-group">
+              <label>Base Imponible (€)</label>
+              <input type="number" id="inv-base" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Tipo IVA (%)</label>
+              <select id="inv-iva">
+                <option value="21">21% — General</option>
+                <option value="10">10% — Reducido</option>
+                <option value="4">4% — Superreducido</option>
+                <option value="0">0% — Exento</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha</label>
+              <input type="date" id="inv-fecha">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="submitInvoice()">💾 Guardar con clasificación IA</button>
+            <button class="btn btn-ghost" onclick="toggleInvoiceForm()">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="invoices-table-wrap">
+          <div class="table-header">
+            <span class="table-title">Facturas registradas</span>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterInvoices('all', this)">Todas</button>
+              <button class="filter-tab" onclick="filterInvoices('ingreso', this)">Ingresos</button>
+              <button class="filter-tab" onclick="filterInvoices('gasto', this)">Gastos</button>
+            </div>
+          </div>
+          <div id="invoices-table-body">
+            <div class="empty-state">
+              <span class="empty-icon">🧾</span>
+              <h3>Sin facturas todavía</h3>
+              <p>Añade tu primera factura usando el formulario o sube un archivo</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TRANSACTIONS VIEW ── -->
+    <div class="view" id="view-transactions">
+      <div class="transactions-view">
+        <h2>Ingresos y <span>Gastos</span></h2>
+
+        <div class="tx-form">
+          <h3>➕ Registrar Movimiento</h3>
+          <div class="tipo-toggle">
+            <button class="tipo-btn income active" id="tx-tipo-income" onclick="setTxTipo('ingreso')">
+              💰 Ingreso
+            </button>
+            <button class="tipo-btn expense" id="tx-tipo-expense" onclick="setTxTipo('gasto')">
+              💸 Gasto
+            </button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Concepto</label>
+              <input type="text" id="tx-concepto" placeholder="ej. Factura cliente, Cuota autónomo">
+            </div>
+            <div class="form-group">
+              <label>Importe (€)</label>
+              <input type="number" id="tx-importe" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="tx-categoria">
+                <option value="">Sin categoría</option>
+                <option value="servicios">Servicios profesionales</option>
+                <option value="productos">Venta de productos</option>
+                <option value="cuota_autonomo">Cuota autónomo</option>
+                <option value="suministros">Suministros (luz, agua, internet)</option>
+                <option value="software">Software y herramientas</option>
+                <option value="marketing">Marketing y publicidad</option>
+                <option value="formacion">Formación</option>
+                <option value="material_oficina">Material de oficina</option>
+                <option value="transporte">Transporte y dietas</option>
+                <option value="asesoria">Asesoría y gestoría</option>
+                <option value="alquiler">Alquiler local</option>
+                <option value="seguros">Seguros</option>
+                <option value="otros">Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha</label>
+              <input type="date" id="tx-fecha">
+            </div>
+            <div class="form-group">
+              <label>¿Es deducible?</label>
+              <select id="tx-deducible">
+                <option value="false">No / No seguro</option>
+                <option value="true">Sí, es deducible</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addTransaction()">Registrar movimiento</button>
+          </div>
+        </div>
+
+        <div class="invoices-table-wrap">
+          <div class="table-header">
+            <span class="table-title">Historial de movimientos</span>
+          </div>
+          <div id="tx-table-body">
+            <div class="empty-state">
+              <span class="empty-icon">💶</span>
+              <h3>Sin movimientos</h3>
+              <p>Registra tu primer ingreso o gasto</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ============================================================
+   FISCALÍA IA — Frontend Application
+   ============================================================ */
+
+// Auto-detect: relative URL in production (Docker/nginx), direct in local dev
+const IS_DEV = window.location.hostname === 'localhost' && window.location.port === '8000';
+const API = IS_DEV ? 'http://127.0.0.1:8000/api' : '/api';
+
+// ── State ──────────────────────────────────────────────────
+const state = {
+  conversationId: null,
+  sessionId: localStorage.getItem('session_id') || crypto.randomUUID(),
+  isLoading: false,
+  currentPeriod: 0,  // 0 = all year, 1-4 = Q1-Q4
+  invoices: [],
+  transactions: [],
+  txTipo: 'ingreso',
+};
+
+localStorage.setItem('session_id', state.sessionId);
+
+// ── Navigation ─────────────────────────────────────────────
+const viewTitles = {
+  chat: 'Chat con <span>IA Fiscal</span>',
+  dashboard: 'Dashboard <span>Financiero</span>',
+  invoices: 'Gestión de <span>Facturas</span>',
+  transactions: 'Ingresos y <span>Gastos</span>',
+};
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  document.getElementById(`view-${name}`).classList.add('active');
+  document.querySelector(`[onclick="showView('${name}')"]`)?.classList.add('active');
+  document.getElementById('page-title').innerHTML = viewTitles[name] || name;
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'invoices') loadInvoices();
+  if (name === 'transactions') loadTransactions();
+}
+
+// ── Chat ───────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || state.isLoading) return;
+
+  addMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+  showTyping();
+  setLoading(true);
+
+  // Remove welcome screen if present
+  const welcome = document.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  try {
+    const res = await fetch(`${API}/chat/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        session_id: state.sessionId,
+        conversation_id: state.conversationId || null,
+      }),
+    });
+
+    if (!res.ok) throw new Error('Error en el servidor');
+    const data = await res.json();
+
+    state.conversationId = data.conversation_id;
+    removeTyping();
+    addMessage('assistant', data.answer);
+  } catch (err) {
+    removeTyping();
+    addMessage('assistant', `⚠️ **Error de conexión**\n\nNo se pudo conectar con el servidor. Asegúrate de que el backend está ejecutándose:\n\`\`\`\ncd backend && uvicorn app.main:app --reload\n\`\`\``);
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function sendQuick(text) {
+  const input = document.getElementById('chat-input');
+  input.value = text;
+  sendMessage();
+}
+
+function askAbout(text) {
+  showView('chat');
+  setTimeout(() => sendQuick(text), 100);
+}
+
+function addMessage(role, content) {
+  const container = document.getElementById('chat-messages');
+  const welcome = container.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+
+  const avatar = role === 'user' ? '👤' : '⚖️';
+  div.innerHTML = `
+    <div class="message-avatar">${avatar}</div>
+    <div class="message-bubble">${renderMarkdown(content)}</div>
+  `;
+
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.id = 'typing-indicator';
+  div.innerHTML = `
+    <div class="message-avatar">⚖️</div>
+    <div class="message-bubble">
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+  document.getElementById('typing-indicator')?.remove();
+}
+
+function setLoading(val) {
+  state.isLoading = val;
+  document.getElementById('send-btn').disabled = val;
+}
+
+function clearChat() {
+  state.conversationId = null;
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = `
+    <div class="chat-welcome">
+      <span class="welcome-icon">⚖️</span>
+      <h2>Hola, soy tu asesor <em>fiscal IA</em></h2>
+      <p>Especializado en autónomos españoles. Pregúntame sobre IVA, IRPF, gastos deducibles, modelos tributarios o cualquier duda fiscal.</p>
+      <div class="quick-questions">
+        <button class="quick-q" onclick="sendQuick('¿Qué gastos puedo deducir como autónomo?')">💼 Gastos deducibles</button>
+        <button class="quick-q" onclick="sendQuick('¿Cuánto IVA debo cobrar en mis facturas?')">📋 IVA en facturas</button>
+        <button class="quick-q" onclick="sendQuick('¿Cuándo son las declaraciones trimestrales?')">📅 Plazos trimestrales</button>
+        <button class="quick-q" onclick="sendQuick('¿Cuánto pagaré de IRPF si gano 40.000€?')">📊 Calcular IRPF</button>
+        <button class="quick-q" onclick="sendQuick('¿Puedo deducir el teléfono móvil?')">📱 Deducir móvil</button>
+        <button class="quick-q" onclick="sendQuick('¿Qué es la tarifa plana para autónomos?')">🆕 Tarifa plana</button>
+      </div>
+    </div>
+  `;
+}
+
+// ── Markdown Renderer ──────────────────────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
+    .replace(/(<li>.*<\/li>)\n/gs, (m) => `<ul>${m}</ul>`)
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^(?!<[h|u|l|h|p|b])(.+)/, '<p>$1</p>');
+}
+
+// ── Dashboard ──────────────────────────────────────────────
+function setPeriod(q, btn) {
+  state.currentPeriod = q;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const año = new Date().getFullYear();
+  const q = state.currentPeriod > 0 ? `&trimestre=${state.currentPeriod}` : '';
+
+  try {
+    const res = await fetch(`${API}/analysis/summary?año=${año}${q}`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    renderDashboard(data);
+  } catch {
+    // Show demo data if backend not available
+    renderDashboard(getDemoData());
+  }
+}
+
+function getDemoData() {
+  return {
+    ingresos: 0, gastos: 0, beneficio: 0, margen_pct: 0,
+    gastos_deducibles: 0, iva_a_pagar: 0, irpf_estimado: 0,
+    irpf_retenido: 0, diferencia_irpf: 0,
+    meses: {},
+    categorias: {},
+    insights: [
+      '💡 Conecta el backend para ver tus datos reales',
+      '📊 Añade ingresos y gastos para obtener análisis IA',
+      '🧾 Sube facturas para clasificación automática',
+    ]
+  };
+}
+
+function renderDashboard(data) {
+  const fmt = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n || 0);
+  const pct = n => `${(n || 0).toFixed(1)}%`;
+
+  // KPIs
+  document.getElementById('kpi-ingresos').textContent = fmt(data.ingresos);
+  document.getElementById('kpi-gastos').textContent = fmt(data.gastos);
+  document.getElementById('kpi-beneficio').textContent = fmt(data.beneficio);
+  document.getElementById('kpi-iva').textContent = fmt(data.iva_a_pagar);
+  document.getElementById('kpi-ingresos-meta').textContent = `${data.num_transacciones || 0} transacciones`;
+  document.getElementById('kpi-gastos-meta').textContent = `Deducibles: ${fmt(data.gastos_deducibles)}`;
+  document.getElementById('kpi-margen').textContent = `Margen neto: ${pct(data.margen_pct)}`;
+  document.getElementById('kpi-irpf-meta').textContent = `IRPF est.: ${fmt(data.irpf_estimado)}`;
+
+  // Tax summary
+  document.getElementById('ts-base').textContent = fmt(data.ingresos);
+  document.getElementById('ts-iva-sop').textContent = fmt(data.gastos_deducibles * 0.21);
+  document.getElementById('ts-iva-pagar').textContent = fmt(data.iva_a_pagar);
+  document.getElementById('ts-irpf-ret').textContent = fmt(data.irpf_retenido);
+  document.getElementById('ts-irpf-est').textContent = fmt(data.irpf_estimado);
+  const diff = data.diferencia_irpf;
+  const diffEl = document.getElementById('ts-irpf-diff');
+  diffEl.textContent = `${diff >= 0 ? '+' : ''}${fmt(diff)}`;
+  diffEl.className = `amount ${diff >= 0 ? 'danger' : 'success'}`;
+
+  // Bar chart
+  renderBarChart(data.meses);
+
+  // Insights
+  const insightsList = document.getElementById('insights-list');
+  const icons = ['💡', '📊', '⚠️', '✅', '🎯'];
+  insightsList.innerHTML = (data.insights || []).map((insight, i) => `
+    <div class="insight-item">
+      <span class="insight-icon">${icons[i % icons.length]}</span>
+      ${insight}
+    </div>
+  `).join('');
+
+  // Categories
+  renderCategories(data.categorias);
+}
+
+function renderBarChart(meses) {
+  const chartEl = document.getElementById('bar-chart');
+  const labelsEl = document.getElementById('bar-labels');
+
+  if (!meses || Object.keys(meses).length === 0) {
+    chartEl.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;flex:1;display:flex;align-items:center;justify-content:center;">Añade transacciones para ver el gráfico</div>`;
+    labelsEl.innerHTML = '';
+    return;
+  }
+
+  const keys = Object.keys(meses).sort();
+  const maxVal = Math.max(...keys.map(k => Math.max(meses[k].ingresos, meses[k].gastos)));
+
+  chartEl.innerHTML = keys.map(k => {
+    const hI = maxVal > 0 ? (meses[k].ingresos / maxVal * 100) : 0;
+    const hG = maxVal > 0 ? (meses[k].gastos / maxVal * 100) : 0;
+    return `
+      <div class="bar-group">
+        <div class="bar income-bar" style="height:${hI}%" title="Ingresos: ${meses[k].ingresos}€"></div>
+        <div class="bar expense-bar" style="height:${hG}%" title="Gastos: ${meses[k].gastos}€"></div>
+      </div>
+    `;
+  }).join('');
+
+  labelsEl.innerHTML = keys.map(k => `
+    <div class="bar-label">${k.slice(5)}</div>
+  `).join('');
+}
+
+function renderCategories(cats) {
+  const el = document.getElementById('category-breakdown');
+  if (!cats || Object.keys(cats).length === 0) {
+    el.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">Añade facturas para ver el desglose</div>`;
+    return;
+  }
+
+  const fmt = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n || 0);
+  el.innerHTML = Object.entries(cats).map(([cat, vals]) => `
+    <div class="tax-row">
+      <span class="label">${cat.replace(/_/g, ' ')}</span>
+      <span class="amount">${fmt(vals.gastos || vals.ingresos)}</span>
+    </div>
+  `).join('');
+}
+
+// ── Invoices ───────────────────────────────────────────────
+function toggleInvoiceForm() {
+  document.getElementById('invoice-form').classList.toggle('open');
+  document.getElementById('inv-fecha').value = new Date().toISOString().split('T')[0];
+}
+
+async function submitInvoice() {
+  const formData = new FormData();
+  formData.append('tipo', document.getElementById('inv-tipo').value);
+  formData.append('emisor', document.getElementById('inv-emisor').value);
+  formData.append('concepto', document.getElementById('inv-concepto').value);
+  formData.append('base_imponible', document.getElementById('inv-base').value || '0');
+  formData.append('tipo_iva', document.getElementById('inv-iva').value);
+  formData.append('fecha', document.getElementById('inv-fecha').value);
+
+  const fileInput = document.getElementById('file-input');
+  if (fileInput.files[0]) formData.append('archivo', fileInput.files[0]);
+
+  try {
+    const res = await fetch(`${API}/invoices/`, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    toast(`✅ Factura guardada · Categoría IA: ${data.clasificacion_ia?.categoria || 'otros'}`, 'success');
+    toggleInvoiceForm();
+    loadInvoices();
+  } catch {
+    toast('❌ Error al guardar la factura. ¿Está el backend corriendo?', 'error');
+  }
+}
+
+async function loadInvoices() {
+  try {
+    const res = await fetch(`${API}/invoices/`);
+    if (!res.ok) throw new Error();
+    state.invoices = await res.json();
+    renderInvoicesTable(state.invoices);
+  } catch {
+    renderInvoicesTable([]);
+  }
+}
+
+function filterInvoices(tipo, btn) {
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = tipo === 'all' ? state.invoices : state.invoices.filter(i => i.tipo === tipo);
+  renderInvoicesTable(filtered);
+}
+
+function renderInvoicesTable(invoices) {
+  const body = document.getElementById('invoices-table-body');
+  if (!invoices.length) {
+    body.innerHTML = `<div class="empty-state"><span class="empty-icon">🧾</span><h3>Sin facturas todavía</h3><p>Añade tu primera factura usando el formulario</p></div>`;
+    return;
+  }
+
+  const fmt = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n || 0);
+
+  body.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Emisor / Concepto</th>
+          <th>Base</th>
+          <th>IVA</th>
+          <th>Total</th>
+          <th>Categoría IA</th>
+          <th>Deducible</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${invoices.map(inv => `
+          <tr>
+            <td>${inv.fecha ? new Date(inv.fecha).toLocaleDateString('es-ES') : '—'}</td>
+            <td><span class="badge badge-${inv.tipo === 'ingreso' ? 'income' : 'expense'}">${inv.tipo}</span></td>
+            <td>
+              <div style="font-weight:500;">${inv.emisor || '—'}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">${inv.concepto || ''}</div>
+            </td>
+            <td>${fmt(inv.base_imponible)}</td>
+            <td>${inv.tipo_iva}%</td>
+            <td style="font-weight:600">${fmt(inv.total)}</td>
+            <td><span class="badge badge-category">${inv.categoria || '—'}</span></td>
+            <td>${inv.deducible ? '<span class="badge badge-deductible">✓ Sí</span>' : '<span style="color:var(--text-muted);font-size:0.8rem">No</span>'}</td>
+            <td>
+              <button class="btn btn-danger" style="padding:4px 10px;font-size:0.75rem" onclick="deleteInvoice(${inv.id})">🗑</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function deleteInvoice(id) {
+  if (!confirm('¿Eliminar esta factura?')) return;
+  try {
+    await fetch(`${API}/invoices/${id}`, { method: 'DELETE' });
+    loadInvoices();
+    toast('🗑 Factura eliminada', 'success');
+  } catch {
+    toast('Error al eliminar', 'error');
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+}
+
+function handleFile(file) {
+  toast(`📎 Archivo cargado: ${file.name} · Completa el formulario para guardar`, 'success');
+  toggleInvoiceForm();
+}
+
+// ── Transactions ───────────────────────────────────────────
+function setTxTipo(tipo) {
+  state.txTipo = tipo;
+  document.getElementById('tx-tipo-income').classList.toggle('active', tipo === 'ingreso');
+  document.getElementById('tx-tipo-expense').classList.toggle('active', tipo === 'gasto');
+}
+
+async function addTransaction() {
+  const concepto = document.getElementById('tx-concepto').value.trim();
+  const importe = parseFloat(document.getElementById('tx-importe').value);
+  if (!concepto || !importe) { toast('⚠️ Rellena concepto e importe', 'error'); return; }
+
+  const body = {
+    tipo: state.txTipo,
+    concepto,
+    importe,
+    categoria: document.getElementById('tx-categoria').value || null,
+    fecha: document.getElementById('tx-fecha').value || null,
+    deducible: document.getElementById('tx-deducible').value === 'true',
+  };
+
+  try {
+    const res = await fetch(`${API}/analysis/transactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error();
+    toast('✅ Movimiento registrado', 'success');
+    document.getElementById('tx-concepto').value = '';
+    document.getElementById('tx-importe').value = '';
+    loadTransactions();
+  } catch {
+    toast('❌ Error. ¿Está el backend corriendo?', 'error');
+  }
+}
+
+async function loadTransactions() {
+  try {
+    const res = await fetch(`${API}/analysis/transactions`);
+    if (!res.ok) throw new Error();
+    state.transactions = await res.json();
+    renderTransactionsTable(state.transactions);
+  } catch {
+    renderTransactionsTable([]);
+  }
+}
+
+function renderTransactionsTable(txs) {
+  const body = document.getElementById('tx-table-body');
+  if (!txs.length) {
+    body.innerHTML = `<div class="empty-state"><span class="empty-icon">💶</span><h3>Sin movimientos</h3><p>Registra tu primer ingreso o gasto</p></div>`;
+    return;
+  }
+
+  const fmt = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n || 0);
+
+  body.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Concepto</th>
+          <th>Categoría</th>
+          <th>Importe</th>
+          <th>Deducible</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${txs.map(tx => `
+          <tr>
+            <td>${tx.fecha ? new Date(tx.fecha).toLocaleDateString('es-ES') : '—'}</td>
+            <td><span class="badge badge-${tx.tipo === 'ingreso' ? 'income' : 'expense'}">${tx.tipo}</span></td>
+            <td>${tx.concepto}</td>
+            <td><span class="badge badge-category">${tx.categoria || '—'}</span></td>
+            <td style="font-weight:600;color:${tx.tipo === 'ingreso' ? '#81d4b0' : '#ff8a80'}">${tx.tipo === 'ingreso' ? '+' : '-'}${fmt(tx.importe)}</td>
+            <td>${tx.deducible ? '<span class="badge badge-deductible">✓</span>' : '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ── Toast Notifications ─────────────────────────────────────
+function toast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── Init ───────────────────────────────────────────────────
+document.getElementById('inv-fecha').value = new Date().toISOString().split('T')[0];
+document.getElementById('tx-fecha').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
