@@ -33,6 +33,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px;-webkit-font-smoothing:antialiased}
 body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
+#auth-overlay:not(.hidden)~*{display:none}
 
 /* ── NOISE TEXTURE ── */
 body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.4}
@@ -40,7 +41,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 /* ══════════════════════════════════════════
    AUTH OVERLAY
 ══════════════════════════════════════════ */
-#auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+#auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
 #auth-overlay.hidden{display:none}
 
 .auth-box{width:100%;max-width:420px}
@@ -862,24 +863,80 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 <!-- TOASTS -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
+
+<!-- ════════════ PROFILE MODAL ════════════ -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="hideProfileModal()">✕</button>
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="profile-avatar-big" id="profile-avatar-big">?</div>
+      <h2 style="font-family:var(--font-d);font-size:1.3rem" id="profile-modal-name">Mi perfil</h2>
+      <span class="chip chip-plan-free" id="profile-plan-chip" style="margin-top:6px">Plan Gratuito</span>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-title">Información personal</div>
+      <div class="profile-field"><label>Nombre completo</label><input type="text" id="pf-name" placeholder="Tu nombre"></div>
+      <div class="profile-field"><label>Email</label><input type="email" id="pf-email" placeholder="tu@email.com"></div>
+      <button class="btn btn-primary btn-sm" onclick="saveProfile()" id="pf-save-btn">Guardar cambios</button>
+      <div class="profile-msg" id="pf-profile-msg"></div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-title">Cambiar contraseña</div>
+      <div class="profile-field"><label>Contraseña actual</label><input type="password" id="pf-pass-current" placeholder="••••••••"></div>
+      <div class="profile-field"><label>Nueva contraseña</label><input type="password" id="pf-pass-new" placeholder="Mínimo 6 caracteres"></div>
+      <div class="profile-field"><label>Confirmar nueva contraseña</label><input type="password" id="pf-pass-confirm" placeholder="Repite la nueva contraseña"></div>
+      <button class="btn btn-ghost btn-sm" onclick="changePassword()" id="pf-pass-btn">Cambiar contraseña</button>
+      <div class="profile-msg" id="pf-pass-msg"></div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-title">Sesión</div>
+      <button class="btn btn-ghost" onclick="logout()" style="width:100%;margin-bottom:12px">🚪 Cerrar sesión</button>
+      <div class="danger-zone">
+        <p>Eliminar la cuenta borrará todos tus datos permanentemente.</p>
+        <button class="btn btn-danger btn-sm" onclick="deleteAccount()">🗑 Eliminar mi cuenta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ FORGOT PASSWORD MODAL ════════════ -->
+<div class="modal-overlay" id="forgot-modal">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="hideForgotModal()">✕</button>
+    <h2 style="font-family:var(--font-d);font-size:1.3rem;margin-bottom:6px">Recuperar contraseña</h2>
+    <p style="color:var(--text2);font-size:.82rem;margin-bottom:20px">Introduce tu email y recibirás un token para restablecer tu contraseña.</p>
+    <div id="forgot-step-1">
+      <div class="profile-field" style="margin-bottom:12px"><label>Email</label><input type="email" id="forgot-email" class="auth-input" placeholder="tu@email.com"></div>
+      <button class="btn-auth" onclick="requestReset()" id="forgot-req-btn">Solicitar recuperación</button>
+      <div class="profile-msg" id="forgot-msg" style="margin-top:10px"></div>
+    </div>
+    <div id="forgot-step-2" style="display:none;margin-top:16px">
+      <div class="profile-field" style="margin-bottom:10px"><label>Token de recuperación</label><input type="text" id="forgot-token" placeholder="Pega el token aquí" style="font-family:monospace;font-size:.78rem"></div>
+      <div class="profile-field" style="margin-bottom:10px"><label>Nueva contraseña</label><input type="password" id="forgot-new-pass" placeholder="Mínimo 6 caracteres"></div>
+      <button class="btn-auth" onclick="confirmReset()" id="forgot-confirm-btn">Restablecer contraseña</button>
+      <div class="profile-msg" id="forgot-msg-2" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
 <script>
-// ═══════════════════════════════════════════════════
-//  FISCALIA IA — Frontend
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════
+//  FiscalIA — Frontend completo v5
+// ═══════════════════════════════════════
 
 const API = window.location.hostname === 'localhost'
   ? 'http://127.0.0.1:8000/api'
   : 'https://fiscalia-backend.onrender.com/api';
 
 const S = {
-  user: null, token: null,
+  user:null, token:null,
   sessionId: localStorage.getItem('sid') || crypto.randomUUID(),
-  conversationId: null, conversations: [],
-  loading: false, attachedFile: null, invoices: [], currentQ: 0,
+  conversationId:null, conversations:[], loading:false,
+  attachedFile:null, invoices:[], currentQ:0,
 };
 localStorage.setItem('sid', S.sessionId);
 
-// ── Auth ─────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────
 function switchAuthTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((t,i) =>
     t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
@@ -893,7 +950,7 @@ function clearAuthError() { document.getElementById('auth-error').classList.remo
 async function doLogin() {
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-pass').value;
-  if (!email||!pass){showAuthError('Rellena email y contraseña');return;}
+  if(!email||!pass){showAuthError('Rellena email y contraseña');return;}
   const btn=document.getElementById('btn-login');
   btn.disabled=true; btn.textContent='Entrando...';
   try {
@@ -901,8 +958,8 @@ async function doLogin() {
     const d=await r.json();
     if(!r.ok) throw new Error(d.detail||'Error al iniciar sesión');
     loginSuccess(d);
-  } catch(e){showAuthError(e.message);}
-  finally{btn.disabled=false;btn.textContent='Entrar';}
+  } catch(e) { showAuthError(e.message); }
+  finally { btn.disabled=false; btn.textContent='Entrar'; }
 }
 
 async function doRegister() {
@@ -918,9 +975,9 @@ async function doRegister() {
     const d=await r.json();
     if(!r.ok) throw new Error(d.detail||'Error al registrarse');
     loginSuccess(d);
-    if(d.trial_message) setTimeout(()=>toast(d.trial_message,'ok'),500);
-  } catch(e){showAuthError(e.message);}
-  finally{btn.disabled=false;btn.textContent='Crear cuenta gratis';}
+    if(d.trial_message) setTimeout(()=>toast(d.trial_message,'ok'),600);
+  } catch(e) { showAuthError(e.message); }
+  finally { btn.disabled=false; btn.textContent='Crear cuenta gratis'; }
 }
 
 function loginSuccess(data) {
@@ -948,35 +1005,37 @@ function initApp() {
   const chip=document.getElementById('plan-chip');
   chip.textContent=plan==='premium'?'⭐ Premium':'⭐ Plan Gratuito';
   chip.className='chip '+(plan==='premium'?'chip-plan-premium':'chip-plan-free');
-  document.getElementById('dash-lock').style.display=plan==='premium'?'none':'';
-  if(plan==='free') { document.getElementById('limit-section').style.display='block'; updateLimitBar(); }
+  const lock=document.getElementById('dash-lock');
+  if(lock) lock.style.display=plan==='premium'?'none':'';
+  if(plan==='free'){document.getElementById('limit-section').style.display='block';updateLimitBar();}
   if(S.user?.plan==='premium'&&S.user?.plan_expires_at){
-    const banner=document.getElementById('trial-banner');
     const exp=new Date(S.user.plan_expires_at);
     const days=Math.ceil((exp-new Date())/(1000*60*60*24));
-    if(days>0){ banner.classList.remove('hidden'); document.getElementById('trial-days-left').textContent=`Quedan ${days} día${days!==1?'s':''}.`; }
+    if(days>0){
+      const banner=document.getElementById('trial-banner');
+      if(banner){banner.classList.remove('hidden');document.getElementById('trial-days-left').textContent=`Quedan ${days} día${days!==1?'s':''}.`;}
+    }
   }
   loadConversations();
-  document.getElementById('dash-year').textContent=new Date().getFullYear();
-  document.getElementById('inv-fecha').value=new Date().toISOString().split('T')[0];
+  const dy=document.getElementById('dash-year');if(dy)dy.textContent=new Date().getFullYear();
+  const invf=document.getElementById('inv-fecha');if(invf)invf.value=new Date().toISOString().split('T')[0];
 }
 
 function updateLimitBar() {
   const used=S.user?.messages_today||0,max=10,pct=Math.min(100,used/max*100);
-  document.getElementById('limit-label').textContent=`${used}/${max} mensajes hoy`;
+  const ll=document.getElementById('limit-label');if(ll)ll.textContent=`${used}/${max} mensajes hoy`;
   const fill=document.getElementById('limit-fill');
-  fill.style.width=pct+'%';
-  fill.className='limit-fill'+(pct>=80?' low':'');
+  if(fill){fill.style.width=pct+'%';fill.className='limit-fill'+(pct>=80?' low':'');}
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
   const t=localStorage.getItem('token'),u=localStorage.getItem('user');
   if(t&&u){S.token=t;S.user=JSON.parse(u);document.getElementById('auth-overlay').classList.add('hidden');initApp();}
-  document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-  document.getElementById('reg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
+  document.getElementById('login-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  document.getElementById('reg-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
 });
 
-// ── Views ─────────────────────────────────────────────
+// ── Views ─────────────────────────────────────────────────────
 const viewTitles={
   chat:'<strong>Chat</strong> con IA fiscal',
   dashboard:'<strong>Dashboard</strong> financiero',
@@ -988,14 +1047,14 @@ function showView(name) {
   if(name==='dashboard'&&S.user?.plan!=='premium'){showPlanModal();return;}
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('view-'+name).classList.add('active');
-  document.getElementById('nav-'+name)?.classList.add('active');
-  document.getElementById('topbar-title').innerHTML=viewTitles[name]||name;
+  const v=document.getElementById('view-'+name);if(v)v.classList.add('active');
+  const nb=document.getElementById('nav-'+name);if(nb)nb.classList.add('active');
+  const tt=document.getElementById('topbar-title');if(tt)tt.innerHTML=viewTitles[name]||name;
   if(name==='dashboard')loadDashboard();
   if(name==='invoices')loadInvoices();
 }
 
-// ── Chat ──────────────────────────────────────────────
+// ── Chat ──────────────────────────────────────────────────────
 function handleInputKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,140)+'px';}
 
@@ -1014,19 +1073,46 @@ async function sendMessage() {
     const body={message:text,session_id:S.sessionId,conversation_id:S.conversationId||null,user_id:S.user?.id||null};
     if(file){body.file_base64=file.base64;body.file_type=file.type;body.file_name=file.name;}
     const r=await fetch(`${API}/chat/`,{
-      method:'POST',headers:{'Content-Type':'application/json',...(S.token?{'Authorization':`Bearer ${S.token}`}:{})},
-      credentials:'omit',body:JSON.stringify(body),
+      method:'POST',
+      headers:{'Content-Type':'application/json',...(S.token?{'Authorization':`Bearer ${S.token}`}:{})},
+      credentials:'omit',
+      body:JSON.stringify(body),
     });
-    const rawText=await r.text();
+    const raw=await r.text();
     let data;
-    try{data=JSON.parse(rawText);}catch{throw new Error(`Respuesta inválida (${r.status}): ${rawText.slice(0,200)}`);}
+    try{data=JSON.parse(raw);}catch{throw new Error(`Respuesta inválida (${r.status})`);}
     if(!r.ok)throw new Error(data?.detail||`Error ${r.status}`);
     S.conversationId=data.conversation_id;
-    removeTyping(); appendMsg('assistant',data.answer);
+    removeTyping();
+    appendMsg('assistant', data.answer);
+    // Check if AI response contains Excel/CSV generation trigger
+    checkForFileGeneration(data.answer);
     if(S.user){S.user.messages_today=(S.user.messages_today||0)+1;updateLimitBar();}
-    setTimeout(loadConversations,500);
+    setTimeout(loadConversations,600);
   } catch(e){removeTyping();appendMsg('assistant',`⚠️ **Error:** ${e.message}`);}
   finally{setLoading(false);}
+}
+
+// ── AI-triggered file generation ──────────────────────────────
+function checkForFileGeneration(answer) {
+  // If AI says it can generate Excel/CSV, show a download button
+  const lower = answer.toLowerCase();
+  const wantsExcel = lower.includes('excel') || lower.includes('.xlsx') || lower.includes('hoja de cálculo');
+  const wantsCSV = lower.includes('.csv') || lower.includes('csv');
+  if ((wantsExcel || wantsCSV) && S.user?.id) {
+    const container = document.getElementById('chat-messages');
+    const inner = container.querySelector('.chat-messages-inner');
+    if (!inner) return;
+    const btn = document.createElement('div');
+    btn.className = 'msg-group';
+    btn.innerHTML = `
+      <div style="display:flex;gap:8px;padding:4px 0 4px 42px;flex-wrap:wrap">
+        ${wantsExcel ? `<button class="btn btn-primary btn-sm" onclick="exportExcel()">📊 Descargar Excel de mis facturas</button>` : ''}
+        ${wantsCSV ? `<button class="btn btn-ghost btn-sm" onclick="exportCSV()">📄 Descargar CSV de mis facturas</button>` : ''}
+      </div>`;
+    inner.appendChild(btn);
+    container.scrollTop = container.scrollHeight;
+  }
 }
 
 function sendQuick(text){document.getElementById('chat-input').value=text;sendMessage();}
@@ -1038,8 +1124,15 @@ function appendMsg(role,text,file=null){
   if(!inner){inner=document.createElement('div');inner.className='chat-messages-inner';container.appendChild(inner);}
   const initials=S.user?.avatar_initials||'?';
   const div=document.createElement('div');div.className='msg-group';
-  div.innerHTML=`<div class="msg ${role}"><div class="msg-avatar">${role==='user'?initials:'⚖️'}</div><div class="msg-bubble">${file&&role==='user'?`<div class="msg-file-preview">📎 ${file.name}</div>`:''} ${renderMd(text)}</div></div>`;
-  inner.appendChild(div);container.scrollTop=container.scrollHeight;
+  div.innerHTML=`<div class="msg ${role}">
+    <div class="msg-avatar">${role==='user'?initials:'⚖️'}</div>
+    <div class="msg-bubble">
+      ${file&&role==='user'?`<div class="msg-file-preview">📎 ${file.name}</div>`:''}
+      ${renderMd(text)}
+    </div>
+  </div>`;
+  inner.appendChild(div);
+  container.scrollTop=container.scrollHeight;
 }
 
 function showTyping(){
@@ -1050,35 +1143,49 @@ function showTyping(){
   inner.appendChild(div);container.scrollTop=container.scrollHeight;
 }
 function removeTyping(){document.getElementById('typing')?.remove();}
-function setLoading(v){S.loading=v;document.getElementById('send-btn').disabled=v;}
+function setLoading(v){S.loading=v;const b=document.getElementById('send-btn');if(b)b.disabled=v;}
 
 function newChat(){
   S.conversationId=null;
   const container=document.getElementById('chat-messages');
   const inner=container.querySelector('.chat-messages-inner');
-  if(inner){inner.innerHTML=`<div class="chat-welcome" id="chat-welcome"><span class="welcome-glyph">⚖️</span><h2 class="welcome-h">Tu asesor fiscal <em>inteligente</em></h2><p class="welcome-p">Especializado en autónomos españoles. Actualizado con la normativa 2025-2026.</p><div class="quick-grid"><button class="quick-btn" onclick="sendQuick('¿Qué novedades fiscales hay para autónomos en 2026?')"><span class="qb-icon">🆕</span><span class="qb-text">Novedades 2026</span></button><button class="quick-btn" onclick="sendQuick('¿Cuánto pagaré de IRPF si gano 45.000€?')"><span class="qb-icon">📊</span><span class="qb-text">Calcular IRPF</span></button><button class="quick-btn" onclick="sendQuick('¿Qué gastos puedo deducir trabajando desde casa?')"><span class="qb-icon">🏠</span><span class="qb-text">Deducciones en casa</span></button><button class="quick-btn" onclick="sendQuick('Cuota autónomo 2026 por ingresos reales')"><span class="qb-icon">💶</span><span class="qb-text">Cuota autónomo</span></button></div></div>`;}
+  if(inner){inner.innerHTML=`<div class="chat-welcome" id="chat-welcome">
+    <span class="welcome-glyph">⚖️</span>
+    <h2 class="welcome-h">Tu asesor fiscal <em>inteligente</em></h2>
+    <p class="welcome-p">Especializado en autónomos españoles. Puedo analizar tus facturas, generar Excel con tus datos y responder cualquier duda fiscal.</p>
+    <div class="quick-grid">
+      <button class="quick-btn" onclick="sendQuick('¿Qué novedades fiscales hay para autónomos en 2026?')"><span class="qb-icon">🆕</span><span class="qb-text">Novedades 2026</span></button>
+      <button class="quick-btn" onclick="sendQuick('¿Cuánto pagaré de IRPF si gano 45.000€?')"><span class="qb-icon">📊</span><span class="qb-text">Calcular IRPF</span></button>
+      <button class="quick-btn" onclick="sendQuick('Genera un Excel con todas mis facturas de este año')"><span class="qb-icon">📥</span><span class="qb-text">Exportar mis facturas</span></button>
+      <button class="quick-btn" onclick="sendQuick('Analiza mi situación fiscal y dime cuánto IVA e IRPF debo pagar')"><span class="qb-icon">🔍</span><span class="qb-text">Análisis fiscal</span></button>
+      <button class="quick-btn" onclick="sendQuick('¿Qué gastos puedo deducir trabajando desde casa?')"><span class="qb-icon">🏠</span><span class="qb-text">Deducciones en casa</span></button>
+      <button class="quick-btn" onclick="sendQuick('¿Cuál es mi cuota de autónomo según mis ingresos?')"><span class="qb-icon">💶</span><span class="qb-text">Cuota autónomo</span></button>
+    </div>
+  </div>`;}
   showView('chat');
   document.querySelectorAll('.conv-item').forEach(c=>c.classList.remove('active'));
 }
 
-// ── Conversations ─────────────────────────────────────
+// ── Conversations ─────────────────────────────────────────────
 async function loadConversations(){
   try{
     const params=S.user?.id?`user_id=${S.user.id}`:`session_id=${S.sessionId}`;
     const r=await fetch(`${API}/chat/conversations?${params}`,{credentials:'omit'});
     if(!r.ok)return;
-    S.conversations=await r.json(); renderConvList();
+    S.conversations=await r.json();renderConvList();
   }catch{}
 }
-
 function renderConvList(){
   const list=document.getElementById('conv-list');
   const label=document.getElementById('conv-section-label');
   if(!S.conversations.length){list.innerHTML='';label.style.display='none';return;}
   label.style.display='block';
-  list.innerHTML=S.conversations.slice(0,20).map(c=>`<div class="conv-item ${c.id===S.conversationId?'active':''}" onclick="loadConv(${c.id})" data-id="${c.id}"><span class="conv-title">${escHtml(c.title||'Conversación')}</span><button class="conv-delete" onclick="deleteConv(event,${c.id})">🗑</button></div>`).join('');
+  list.innerHTML=S.conversations.slice(0,20).map(c=>`
+    <div class="conv-item ${c.id===S.conversationId?'active':''}" onclick="loadConv(${c.id})" data-id="${c.id}">
+      <span class="conv-title">${escHtml(c.title||'Conversación')}</span>
+      <button class="conv-delete" onclick="deleteConv(event,${c.id})">🗑</button>
+    </div>`).join('');
 }
-
 async function loadConv(id){
   S.conversationId=id;
   try{
@@ -1094,155 +1201,144 @@ async function loadConv(id){
     showView('chat');
   }catch{}
 }
-
 async function deleteConv(e,id){
   e.stopPropagation();
   try{await fetch(`${API}/chat/conversations/${id}`,{method:'DELETE',credentials:'omit'});if(S.conversationId===id)newChat();loadConversations();}catch{}
 }
 
-// ── File Attachment ───────────────────────────────────
+// ── File Attachment ───────────────────────────────────────────
 function triggerFileUpload(){
   if(S.user?.plan!=='premium'&&S.user?.id){showPlanModal();return;}
   document.getElementById('file-input').click();
 }
 function handleFileSelect(e){const f=e.target.files[0];if(f)processFile(f);}
-function handleInvDrop(e){e.preventDefault();document.getElementById('upload-drop').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleInvFileData(f);}
+function handleInvDrop(e){e.preventDefault();document.getElementById('upload-drop')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)handleInvFileData(f);}
 function handleInvFile(e){handleInvFileData(e.target.files[0]);}
 function handleInvFileData(file){toast(`📎 ${file.name} cargado`,'ok');toggleInvForm();}
-
 async function processFile(file){
   const reader=new FileReader();
   reader.onload=(e)=>{
-    const base64=e.target.result.split(',')[1];
-    S.attachedFile={base64,type:file.type,name:file.name};
+    S.attachedFile={base64:e.target.result.split(',')[1],type:file.type,name:file.name};
     const bar=document.getElementById('file-preview-bar');
-    bar.classList.add('show');
-    document.getElementById('file-preview-content').textContent=`📎 ${file.name}`;
+    if(bar){bar.classList.add('show');const fc=document.getElementById('file-preview-content');if(fc)fc.textContent=`📎 ${file.name}`;}
   };
   reader.readAsDataURL(file);
 }
-
 function removeFile(){
   S.attachedFile=null;
-  document.getElementById('file-preview-bar').classList.remove('show');
-  document.getElementById('file-preview-bar').innerHTML=`<span id="file-preview-content">📎 archivo</span><button class="file-preview-remove" onclick="removeFile()">✕</button>`;
-  document.getElementById('file-input').value='';
+  const bar=document.getElementById('file-preview-bar');
+  if(bar){bar.classList.remove('show');bar.innerHTML=`<span id="file-preview-content">📎 archivo</span><button class="file-preview-remove" onclick="removeFile()">✕</button>`;}
+  const fi=document.getElementById('file-input');if(fi)fi.value='';
 }
 
-// ── Dashboard ─────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────
 let currentQ=0;
 function setQ(q,btn){currentQ=q;document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadDashboard();}
 
 async function loadDashboard(){
-  const yr=new Date().getFullYear();
-  const q=currentQ>0?`&trimestre=${currentQ}`:'';
-  try{const r=await fetch(`${API}/analysis/summary?año=${yr}${q}`,{credentials:'omit'});if(!r.ok)throw new Error();renderDash(await r.json());}
-  catch{renderDash({ingresos:0,gastos:0,beneficio:0,margen_pct:0,gastos_deducibles:0,iva_a_pagar:0,irpf_estimado:0,irpf_retenido:0,diferencia_irpf:0,num_transacciones:0,meses:{},categorias:{},insights:['💡 Añade transacciones para ver tu análisis fiscal','📊 El dashboard calcula IVA e IRPF automáticamente']});}
+  const yr=new Date().getFullYear(),q=currentQ>0?`&trimestre=${currentQ}`:'';
+  try{const r=await fetch(`${API}/analysis/summary?año=${yr}${q}`,{credentials:'omit'});if(!r.ok)throw '';renderDash(await r.json());}
+  catch{renderDash({ingresos:0,gastos:0,beneficio:0,margen_pct:0,gastos_deducibles:0,iva_a_pagar:0,irpf_estimado:0,irpf_retenido:0,diferencia_irpf:0,num_transacciones:0,meses:{},categorias:{},insights:['💡 Añade facturas para ver tu análisis','📊 El dashboard se conecta con tus facturas automáticamente','🤖 La IA analiza tus datos en cada consulta']});}
 }
-
 function renderDash(d){
   const f=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n||0);
-  document.getElementById('kpi-in').textContent=f(d.ingresos);
-  document.getElementById('kpi-out').textContent=f(d.gastos);
-  document.getElementById('kpi-net').textContent=f(d.beneficio);
-  document.getElementById('kpi-tax').textContent=f(d.iva_a_pagar);
-  document.getElementById('kpi-in-sub').textContent=`${d.num_transacciones||0} ingresos`;
-  document.getElementById('kpi-out-sub').textContent=`Deducibles: ${f(d.gastos_deducibles)}`;
-  document.getElementById('kpi-net-sub').textContent=`Margen: ${(d.margen_pct||0).toFixed(1)}%`;
-  document.getElementById('kpi-tax-sub').textContent=`IRPF est.: ${f(d.irpf_estimado)}`;
-  document.getElementById('ts-base').textContent=f(d.ingresos);
-  document.getElementById('ts-iva-s').textContent=f((d.gastos_deducibles||0)*0.21);
-  document.getElementById('ts-iva-p').textContent=f(d.iva_a_pagar);
-  document.getElementById('ts-ret').textContent=f(d.irpf_retenido);
-  document.getElementById('ts-irpf').textContent=f(d.irpf_estimado);
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('kpi-in',f(d.ingresos));set('kpi-out',f(d.gastos));set('kpi-net',f(d.beneficio));set('kpi-tax',f(d.iva_a_pagar));
+  set('kpi-in-sub',`${d.num_transacciones||0} facturas`);
+  set('kpi-out-sub',`Deducibles: ${f(d.gastos_deducibles)}`);
+  set('kpi-net-sub',`Margen: ${(d.margen_pct||0).toFixed(1)}%`);
+  set('kpi-tax-sub',`IRPF est.: ${f(d.irpf_estimado)}`);
+  set('ts-base',f(d.ingresos));set('ts-iva-s',f((d.gastos_deducibles||0)*0.21));set('ts-iva-p',f(d.iva_a_pagar));
+  set('ts-ret',f(d.irpf_retenido));set('ts-irpf',f(d.irpf_estimado));
   const diff=d.diferencia_irpf||0;
   const diffEl=document.getElementById('ts-diff');
-  diffEl.textContent=(diff>=0?'+':'')+f(diff);
-  diffEl.className='tax-val '+(diff>=0?'neg':'pos');
+  if(diffEl){diffEl.textContent=(diff>=0?'+':'')+f(diff);diffEl.className='tax-val '+(diff>=0?'neg':'pos');}
   renderBarChart(d.meses||{});
   const ins=document.getElementById('insights');
-  const icons=['💡','📊','⚠️','✅','🎯'];
-  ins.innerHTML=(d.insights||[]).map((s,i)=>`<div class="insight"><span class="insight-ico">${icons[i%icons.length]}</span>${s}</div>`).join('');
+  if(ins){const icons=['💡','📊','⚠️','✅','🎯'];ins.innerHTML=(d.insights||[]).map((s,i)=>`<div class="insight"><span class="insight-ico">${icons[i%icons.length]}</span>${s}</div>`).join('');}
   const cats=d.categorias||{};
   const catsEl=document.getElementById('cat-breakdown');
-  if(!Object.keys(cats).length){catsEl.innerHTML='<div style="color:var(--text2);font-size:.82rem">Añade facturas para ver el desglose</div>';return;}
-  catsEl.innerHTML=`<div class="tax-table">${Object.entries(cats).map(([k,v])=>`<div class="tax-row"><span class="tax-lbl">${k.replace(/_/g,' ')}</span><span class="tax-val">${f(v.gastos||v.ingresos||0)}</span></div>`).join('')}</div>`;
+  if(catsEl){
+    if(!Object.keys(cats).length){catsEl.innerHTML='<div style="color:var(--text2);font-size:.82rem">Añade facturas para ver el desglose</div>';return;}
+    catsEl.innerHTML=`<div class="tax-table">${Object.entries(cats).map(([k,v])=>`<div class="tax-row"><span class="tax-lbl">${k.replace(/_/g,' ')}</span><span class="tax-val">${f(v.gastos||v.ingresos||0)}</span></div>`).join('')}</div>`;
+  }
 }
-
 function renderBarChart(meses){
-  const chart=document.getElementById('bar-chart');
-  const labels=document.getElementById('bar-labels');
+  const chart=document.getElementById('bar-chart'),labels=document.getElementById('bar-labels');
+  if(!chart)return;
   const keys=Object.keys(meses).sort();
-  if(!keys.length){chart.innerHTML='<div style="color:var(--text3);font-size:.82rem;flex:1;display:flex;align-items:center;justify-content:center">Añade transacciones para ver el gráfico</div>';labels.innerHTML='';return;}
+  if(!keys.length){chart.innerHTML='<div style="color:var(--text3);font-size:.82rem;flex:1;display:flex;align-items:center;justify-content:center">Añade facturas para ver el gráfico</div>';if(labels)labels.innerHTML='';return;}
   const max=Math.max(...keys.map(k=>Math.max(meses[k].ingresos||0,meses[k].gastos||0)),1);
   chart.innerHTML=keys.map(k=>`<div class="bar-grp"><div class="bar b-in" style="height:${(meses[k].ingresos||0)/max*100}%"></div><div class="bar b-out" style="height:${(meses[k].gastos||0)/max*100}%"></div></div>`).join('');
-  labels.innerHTML=keys.map(k=>`<div class="bar-lbl">${k.slice(5)}</div>`).join('');
+  if(labels)labels.innerHTML=keys.map(k=>`<div class="bar-lbl">${k.slice(5)}</div>`).join('');
 }
 
-// ── Invoices ──────────────────────────────────────────
-function toggleInvForm(){document.getElementById('inv-form').classList.toggle('open');}
-
+// ── Invoices ──────────────────────────────────────────────────
+function toggleInvForm(){document.getElementById('inv-form')?.classList.toggle('open');}
 async function submitInvoice(){
   const fd=new FormData();
-  fd.append('tipo',document.getElementById('inv-tipo').value);
-  fd.append('emisor',document.getElementById('inv-emisor').value);
-  fd.append('concepto',document.getElementById('inv-concepto').value);
-  fd.append('base_imponible',document.getElementById('inv-base').value||'0');
-  fd.append('tipo_iva',document.getElementById('inv-iva').value);
-  fd.append('fecha',document.getElementById('inv-fecha').value);
+  ['inv-tipo','inv-emisor','inv-concepto','inv-iva','inv-fecha'].forEach(id=>{const e=document.getElementById(id);if(e)fd.append(id.replace('inv-',''),e.value);});
+  fd.append('base_imponible',document.getElementById('inv-base')?.value||'0');
   try{
     const r=await fetch(`${API}/invoices/`,{method:'POST',body:fd,credentials:'omit'});
     if(!r.ok)throw new Error();
     const d=await r.json();
-    toast(`✅ Factura guardada · Categoría IA: ${d.clasificacion_ia?.categoria||'otros'}`,'ok');
+    toast(`✅ Factura guardada · Categoría: ${d.clasificacion_ia?.categoria||'otros'}`,'ok');
     toggleInvForm();loadInvoices();
   }catch{toast('❌ Error al guardar la factura','err');}
 }
-
 async function loadInvoices(){
   try{const r=await fetch(`${API}/invoices/`,{credentials:'omit'});if(!r.ok)return;S.invoices=await r.json();renderInvTable(S.invoices);}
   catch{renderInvTable([]);}
 }
-
 function filterInv(tipo,btn){
   document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   renderInvTable(tipo==='all'?S.invoices:S.invoices.filter(i=>i.tipo===tipo));
 }
-
 function renderInvTable(list){
-  const el=document.getElementById('inv-table');
+  const el=document.getElementById('inv-table');if(!el)return;
   if(!list.length){el.innerHTML=`<div class="empty-state"><span class="empty-icon">🧾</span><h3>Sin facturas</h3><p>Añade tu primera factura</p></div>`;return;}
   const f=n=>new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(n||0);
-  el.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Emisor</th><th>Base</th><th>IVA</th><th>Total</th><th>Categoría IA</th><th>Deducible</th><th></th></tr></thead><tbody>${list.map(i=>`<tr><td>${i.fecha?new Date(i.fecha).toLocaleDateString('es-ES'):'—'}</td><td><span class="badge ${i.tipo==='ingreso'?'b-in':'b-out'}">${i.tipo}</span></td><td><div style="font-weight:500">${escHtml(i.emisor||'—')}</div><div style="font-size:.74rem;color:var(--text3)">${escHtml(i.concepto||'')}</div></td><td>${f(i.base_imponible)}</td><td>${i.tipo_iva}%</td><td style="font-weight:600">${f(i.total)}</td><td><span class="badge b-cat">${i.categoria||'—'}</span></td><td>${i.deducible?'<span class="badge b-ded">✓ Sí</span>':'<span style="color:var(--text3);font-size:.75rem">No</span>'}</td><td><button class="btn btn-danger btn-sm" onclick="delInv(${i.id})">🗑</button></td></tr>`).join('')}</tbody></table>`;
+  el.innerHTML=`<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Emisor</th><th>Base</th><th>IVA%</th><th>Total</th><th>Categoría IA</th><th>Deducible</th><th></th></tr></thead><tbody>
+  ${list.map(i=>`<tr>
+    <td>${i.fecha?new Date(i.fecha).toLocaleDateString('es-ES'):'—'}</td>
+    <td><span class="badge ${i.tipo==='ingreso'?'b-in':'b-out'}">${i.tipo}</span></td>
+    <td><div style="font-weight:500">${escHtml(i.emisor||'—')}</div><div style="font-size:.74rem;color:var(--text3)">${escHtml(i.concepto||'')}</div></td>
+    <td>${f(i.base_imponible)}</td><td>${i.tipo_iva}%</td>
+    <td style="font-weight:600">${f(i.total)}</td>
+    <td><span class="badge b-cat">${i.categoria||'—'}</span></td>
+    <td>${i.deducible?'<span class="badge b-ded">✓ Sí</span>':'<span style="color:var(--text3);font-size:.75rem">No</span>'}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delInv(${i.id})">🗑</button></td>
+  </tr>`).join('')}
+  </tbody></table>`;
 }
-
 async function delInv(id){
   if(!confirm('¿Eliminar factura?'))return;
   try{await fetch(`${API}/invoices/${id}`,{method:'DELETE',credentials:'omit'});loadInvoices();toast('🗑 Eliminada','ok');}catch{}
 }
 
-// ── Plan Modal ─────────────────────────────────────────
-function showPlanModal(){document.getElementById('plan-modal').classList.add('show');}
-function hidePlanModal(){document.getElementById('plan-modal').classList.remove('show');}
-document.getElementById('plan-modal').addEventListener('click',e=>{if(e.target.id==='plan-modal')hidePlanModal();});
+// ── Plan Modal ────────────────────────────────────────────────
+function showPlanModal(){document.getElementById('plan-modal')?.classList.add('show');}
+function hidePlanModal(){document.getElementById('plan-modal')?.classList.remove('show');}
+document.getElementById('plan-modal')?.addEventListener('click',e=>{if(e.target.id==='plan-modal')hidePlanModal();});
 
 async function startCheckout(){
   if(!S.user?.id){hidePlanModal();document.getElementById('auth-overlay').classList.remove('hidden');toast('Crea una cuenta primero','ok');return;}
   const btn=document.querySelector('.btn-upgrade');
-  btn.textContent='Redirigiendo...';btn.disabled=true;
+  if(btn){btn.textContent='Redirigiendo...';btn.disabled=true;}
   try{
     const r=await fetch(`${API}/stripe/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({user_id:S.user.id,success_url:window.location.href,cancel_url:window.location.href})});
     const d=await r.json();
     if(d.checkout_url)window.location.href=d.checkout_url;
-    else toast('Error al iniciar el pago','err');
-  }catch{toast('Error de conexión con el sistema de pagos','err');}
-  finally{btn.textContent='Actualizar a Premium — 9,99€/mes';btn.disabled=false;}
+    else toast('Pagos próximamente disponibles','ok');
+  }catch{toast('Error de conexión','err');}
+  finally{if(btn){btn.textContent='Actualizar a Premium — 9,99€/mes';btn.disabled=false;}}
 }
 
-const urlParams=new URLSearchParams(window.location.search);
-if(urlParams.get('session_id')){toast('🎉 ¡Pago completado! Tu cuenta Premium ya está activa.','ok');if(S.user){S.user.plan='premium';initApp();}window.history.replaceState({},'',window.location.pathname);}
+const _up=new URLSearchParams(window.location.search);
+if(_up.get('session_id')){toast('🎉 ¡Pago completado! Premium activo.','ok');if(S.user){S.user.plan='premium';initApp();}window.history.replaceState({},'',window.location.pathname);}
 
-// ── Markdown renderer ──────────────────────────────────
+// ── Markdown ──────────────────────────────────────────────────
 function renderMd(text){
   if(!text)return'';
   return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1255,52 +1351,50 @@ function renderMd(text){
 }
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// ── Toast ──────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────
 function toast(msg,type='ok'){
-  const w=document.getElementById('toast-wrap');
-  const el=document.createElement('div');
-  el.className=`toast ${type}`;el.textContent=msg;
+  const w=document.getElementById('toast-wrap');if(!w)return;
+  const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;
   w.appendChild(el);setTimeout(()=>el.remove(),4200);
 }
 
-// ── Spreadsheets ───────────────────────────────────────
+// ── Excel / CSV ───────────────────────────────────────────────
 let xlFile=null;
-function handleXlDrop(e){e.preventDefault();document.getElementById('xl-upload-drop').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setXlFile(f);}
+function handleXlDrop(e){e.preventDefault();document.getElementById('xl-upload-drop')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)setXlFile(f);}
 function handleXlFile(e){const f=e.target.files[0];if(f)setXlFile(f);}
 function setXlFile(file){
   xlFile=file;
-  document.getElementById('xl-file-name').textContent=`📊 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-  document.getElementById('xl-file-selected').style.display='block';
-  document.getElementById('xl-upload-drop').style.display='none';
+  const fn=document.getElementById('xl-file-name');if(fn)fn.textContent=`📊 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  const fs=document.getElementById('xl-file-selected');if(fs)fs.style.display='block';
+  const ud=document.getElementById('xl-upload-drop');if(ud)ud.style.display='none';
 }
 function clearXlFile(){
   xlFile=null;
-  document.getElementById('xl-file-selected').style.display='none';
-  document.getElementById('xl-upload-drop').style.display='block';
-  document.getElementById('xl-file-input').value='';
-  document.getElementById('xl-result').style.display='none';
+  const fs=document.getElementById('xl-file-selected');if(fs)fs.style.display='none';
+  const ud=document.getElementById('xl-upload-drop');if(ud)ud.style.display='block';
+  const fi=document.getElementById('xl-file-input');if(fi)fi.value='';
+  const xr=document.getElementById('xl-result');if(xr)xr.style.display='none';
 }
 async function analyzeXl(){
   if(!xlFile){toast('Primero selecciona un archivo','err');return;}
   const btn=document.getElementById('xl-analyze-btn');
   btn.textContent='⏳ Analizando...';btn.disabled=true;
-  const question=document.getElementById('xl-question').value||'Analiza este archivo fiscalmente';
+  const question=document.getElementById('xl-question')?.value||'Analiza este archivo fiscalmente';
   const fd=new FormData();fd.append('file',xlFile);fd.append('question',question);
   if(S.user?.id)fd.append('user_id',S.user.id);
   try{
     const r=await fetch(`${API}/spreadsheets/analyze`,{method:'POST',body:fd,credentials:'omit'});
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.detail||'Error al analizar');
-    document.getElementById('xl-result-text').innerHTML=renderMd(data.answer);
-    document.getElementById('xl-result').style.display='block';
+    const data=await r.json();if(!r.ok)throw new Error(data.detail||'Error al analizar');
+    const rt=document.getElementById('xl-result-text');if(rt)rt.innerHTML=renderMd(data.answer);
+    const xr=document.getElementById('xl-result');if(xr)xr.style.display='block';
     toast('✅ Análisis completado','ok');
   }catch(e){toast(`❌ ${e.message}`,'err');}
   finally{btn.textContent='Analizar con IA';btn.disabled=false;}
 }
 async function editXl(){
   const fi=document.getElementById('xl-edit-file');
-  const dataInput=document.getElementById('xl-edit-data').value.trim();
-  if(!fi.files[0]){toast('Selecciona un archivo Excel','err');return;}
+  const dataInput=document.getElementById('xl-edit-data')?.value.trim();
+  if(!fi?.files[0]){toast('Selecciona un archivo Excel','err');return;}
   if(!dataInput){toast('Introduce los datos en formato JSON','err');return;}
   try{JSON.parse(dataInput);}catch{toast('El JSON no es válido','err');return;}
   const fd=new FormData();fd.append('file',fi.files[0]);fd.append('new_data',dataInput);
@@ -1309,74 +1403,75 @@ async function editXl(){
     if(!r.ok){const d=await r.json();throw new Error(d.detail);}
     const blob=await r.blob();const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=fi.files[0].name.replace('.xlsx','_editado.xlsx');a.click();URL.revokeObjectURL(url);
-    toast('✅ Archivo descargado con las nuevas filas','ok');
+    toast('✅ Archivo descargado','ok');
   }catch(e){toast(`❌ ${e.message}`,'err');}
 }
+
 async function exportExcel(){
-  const año=new Date().getFullYear();const userId=S.user?.id||1;
+  const año=new Date().getFullYear(),userId=S.user?.id||1;
   toast('⏳ Generando Excel...','ok');
   try{
     const r=await fetch(`${API}/spreadsheets/export/excel?año=${año}&user_id=${userId}`,{credentials:'omit'});
-    if(!r.ok)throw new Error();const blob=await r.blob();const url=URL.createObjectURL(blob);
+    if(!r.ok)throw new Error();
+    const blob=await r.blob();const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=`FiscalIA_Facturas_${año}.xlsx`;a.click();URL.revokeObjectURL(url);
     toast('✅ Excel descargado','ok');
   }catch{toast('❌ Error al generar el Excel','err');}
 }
 async function exportCSV(){
-  const año=new Date().getFullYear();const userId=S.user?.id||1;
+  const año=new Date().getFullYear(),userId=S.user?.id||1;
   try{
     const r=await fetch(`${API}/spreadsheets/export/csv?año=${año}&user_id=${userId}`,{credentials:'omit'});
-    if(!r.ok)throw new Error();const blob=await r.blob();const url=URL.createObjectURL(blob);
+    if(!r.ok)throw new Error();
+    const blob=await r.blob();const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=`FiscalIA_Facturas_${año}.csv`;a.click();URL.revokeObjectURL(url);
     toast('✅ CSV descargado','ok');
   }catch{toast('❌ Error al generar el CSV','err');}
 }
 
-// ── Profile Modal ──────────────────────────────────────
+// ── Profile Modal ─────────────────────────────────────────────
 function showProfileModal(){
   if(!S.user?.id){showPlanModal();return;}
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
   document.getElementById('profile-avatar-big').textContent=S.user.avatar_initials||'?';
   document.getElementById('profile-modal-name').textContent=S.user.full_name||S.user.email||'Mi perfil';
-  document.getElementById('pf-name').value=S.user.full_name||'';
-  document.getElementById('pf-email').value=S.user.email||'';
+  set('pf-name',S.user.full_name);set('pf-email',S.user.email);
   const chip=document.getElementById('profile-plan-chip');
-  chip.textContent=S.user.plan==='premium'?'⭐ Premium':'Plan Gratuito';
-  chip.className='chip '+(S.user.plan==='premium'?'chip-plan-premium':'chip-plan-free');
+  if(chip){chip.textContent=S.user.plan==='premium'?'⭐ Premium':'Plan Gratuito';chip.className='chip '+(S.user.plan==='premium'?'chip-plan-premium':'chip-plan-free');}
   ['pf-profile-msg','pf-pass-msg'].forEach(id=>{const el=document.getElementById(id);if(el){el.className='profile-msg';el.textContent='';}});
   ['pf-pass-current','pf-pass-new','pf-pass-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('profile-modal').classList.add('show');
+  document.getElementById('profile-modal')?.classList.add('show');
 }
-function hideProfileModal(){document.getElementById('profile-modal').classList.remove('show');}
-document.getElementById('profile-modal').addEventListener('click',e=>{if(e.target.id==='profile-modal')hideProfileModal();});
+function hideProfileModal(){document.getElementById('profile-modal')?.classList.remove('show');}
+document.getElementById('profile-modal')?.addEventListener('click',e=>{if(e.target.id==='profile-modal')hideProfileModal();});
 
 function showProfileMsg(id,msg,type){
   const el=document.getElementById(id);if(!el)return;
-  el.textContent=msg;el.className='profile-msg '+type+' show';
+  el.textContent=msg;el.className=`profile-msg ${type} show`;
 }
 
 async function saveProfile(){
-  const name=document.getElementById('pf-name').value.trim();
-  const email=document.getElementById('pf-email').value.trim();
+  const name=document.getElementById('pf-name')?.value.trim();
+  const email=document.getElementById('pf-email')?.value.trim();
   if(!email){showProfileMsg('pf-profile-msg','El email no puede estar vacío','err');return;}
   const btn=document.getElementById('pf-save-btn');btn.disabled=true;btn.textContent='Guardando...';
   try{
     const r=await fetch(`${API}/auth/profile`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token}`},credentials:'omit',body:JSON.stringify({full_name:name||null,email})});
-    const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error al guardar');
+    const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error');
     S.user.full_name=d.user.full_name;S.user.email=d.user.email;S.user.avatar_initials=d.user.avatar_initials;
     localStorage.setItem('user',JSON.stringify(S.user));
     document.getElementById('user-avatar').textContent=d.user.avatar_initials;
     document.getElementById('user-name-display').textContent=d.user.full_name||d.user.email;
     document.getElementById('profile-avatar-big').textContent=d.user.avatar_initials;
-    showProfileMsg('pf-profile-msg','✅ Perfil actualizado correctamente','ok');
-    toast('✅ Perfil actualizado','ok');
+    showProfileMsg('pf-profile-msg','✅ Perfil actualizado','ok');toast('✅ Perfil actualizado','ok');
   }catch(e){showProfileMsg('pf-profile-msg','❌ '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='Guardar cambios';}
 }
 
 async function changePassword(){
-  const current=document.getElementById('pf-pass-current').value;
-  const newPass=document.getElementById('pf-pass-new').value;
-  const confirm=document.getElementById('pf-pass-confirm').value;
+  const current=document.getElementById('pf-pass-current')?.value;
+  const newPass=document.getElementById('pf-pass-new')?.value;
+  const confirm=document.getElementById('pf-pass-confirm')?.value;
   if(!current||!newPass){showProfileMsg('pf-pass-msg','Rellena todos los campos','err');return;}
   if(newPass!==confirm){showProfileMsg('pf-pass-msg','Las contraseñas no coinciden','err');return;}
   if(newPass.length<6){showProfileMsg('pf-pass-msg','Mínimo 6 caracteres','err');return;}
@@ -1384,8 +1479,8 @@ async function changePassword(){
   try{
     const r=await fetch(`${API}/auth/change-password`,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':`Bearer ${S.token}`},credentials:'omit',body:JSON.stringify({current_password:current,new_password:newPass})});
     const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error');
-    showProfileMsg('pf-pass-msg','✅ Contraseña cambiada correctamente','ok');
-    ['pf-pass-current','pf-pass-new','pf-pass-confirm'].forEach(id=>document.getElementById(id).value='');
+    showProfileMsg('pf-pass-msg','✅ Contraseña cambiada','ok');
+    ['pf-pass-current','pf-pass-new','pf-pass-confirm'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     toast('✅ Contraseña actualizada','ok');
   }catch(e){showProfileMsg('pf-pass-msg','❌ '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='Cambiar contraseña';}
@@ -1404,7 +1499,7 @@ function logout(){
 
 async function deleteAccount(){
   if(!confirm('¿Eliminar tu cuenta? Esta acción es IRREVERSIBLE.'))return;
-  if(!confirm('Confirma de nuevo: ¿seguro que quieres eliminar tu cuenta?'))return;
+  if(!confirm('Confirma: ¿seguro que quieres eliminar tu cuenta y todos tus datos?'))return;
   try{
     const r=await fetch(`${API}/auth/account`,{method:'DELETE',headers:{'Authorization':`Bearer ${S.token}`},credentials:'omit'});
     if(!r.ok){const d=await r.json();throw new Error(d.detail);}
@@ -1412,33 +1507,36 @@ async function deleteAccount(){
   }catch(e){toast('❌ '+e.message,'err');}
 }
 
-// ── Forgot Password ────────────────────────────────────
+// ── Forgot Password ───────────────────────────────────────────
 function showForgotModal(){
   document.getElementById('forgot-step-1').style.display='block';
   document.getElementById('forgot-step-2').style.display='none';
-  document.getElementById('forgot-email').value='';
-  const msg=document.getElementById('forgot-msg');if(msg){msg.className='profile-msg';msg.textContent='';}
-  document.getElementById('forgot-modal').classList.add('show');
+  const fe=document.getElementById('forgot-email');if(fe)fe.value='';
+  const fm=document.getElementById('forgot-msg');if(fm){fm.className='profile-msg';fm.textContent='';}
+  document.getElementById('forgot-modal')?.classList.add('show');
 }
-function hideForgotModal(){document.getElementById('forgot-modal').classList.remove('show');}
-document.getElementById('forgot-modal').addEventListener('click',e=>{if(e.target.id==='forgot-modal')hideForgotModal();});
+function hideForgotModal(){document.getElementById('forgot-modal')?.classList.remove('show');}
+document.getElementById('forgot-modal')?.addEventListener('click',e=>{if(e.target.id==='forgot-modal')hideForgotModal();});
 
 async function requestReset(){
-  const email=document.getElementById('forgot-email').value.trim();
+  const email=document.getElementById('forgot-email')?.value.trim();
   if(!email){showProfileMsg('forgot-msg','Introduce tu email','err');return;}
   const btn=document.getElementById('forgot-req-btn');btn.disabled=true;btn.textContent='Enviando...';
   try{
     const r=await fetch(`${API}/auth/reset-password/request`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({email})});
     const d=await r.json();
-    if(d.reset_token){document.getElementById('forgot-token').value=d.reset_token;showProfileMsg('forgot-msg','✅ Token generado. Cópialo abajo para continuar.','ok');document.getElementById('forgot-step-2').style.display='block';}
-    else showProfileMsg('forgot-msg','✅ '+d.message,'ok');
+    if(d.reset_token){
+      const ft=document.getElementById('forgot-token');if(ft)ft.value=d.reset_token;
+      showProfileMsg('forgot-msg','✅ Token generado. Úsalo abajo para continuar.','ok');
+      document.getElementById('forgot-step-2').style.display='block';
+    } else showProfileMsg('forgot-msg','✅ '+d.message,'ok');
   }catch(e){showProfileMsg('forgot-msg','❌ Error: '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='Solicitar recuperación';}
 }
 
 async function confirmReset(){
-  const token=document.getElementById('forgot-token').value.trim();
-  const newPass=document.getElementById('forgot-new-pass').value;
+  const token=document.getElementById('forgot-token')?.value.trim();
+  const newPass=document.getElementById('forgot-new-pass')?.value;
   if(!token||!newPass){showProfileMsg('forgot-msg-2','Rellena todos los campos','err');return;}
   if(newPass.length<6){showProfileMsg('forgot-msg-2','Mínimo 6 caracteres','err');return;}
   const btn=document.getElementById('forgot-confirm-btn');btn.disabled=true;btn.textContent='Restableciendo...';
@@ -1446,7 +1544,7 @@ async function confirmReset(){
     const r=await fetch(`${API}/auth/reset-password/confirm`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'omit',body:JSON.stringify({token,new_password:newPass})});
     const d=await r.json();if(!r.ok)throw new Error(d.detail||'Error');
     showProfileMsg('forgot-msg-2','✅ '+d.message,'ok');
-    setTimeout(()=>hideForgotModal(),2000);toast('✅ Contraseña restablecida.','ok');
+    setTimeout(()=>hideForgotModal(),2000);toast('✅ Contraseña restablecida. Ya puedes iniciar sesión.','ok');
   }catch(e){showProfileMsg('forgot-msg-2','❌ '+e.message,'err');}
   finally{btn.disabled=false;btn.textContent='Restablecer contraseña';}
 }
