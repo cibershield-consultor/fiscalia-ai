@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db
-from app.routers import chat, analysis, invoices, auth, fiscal, fiscal, fiscal
+from app.routers import chat, analysis, invoices, auth, fiscal
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,15 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
-app.include_router(chat.router, prefix="/api/chat", tags=["Chat IA"])
+app.include_router(auth.router,     prefix="/api/auth",     tags=["Autenticación"])
+app.include_router(chat.router,     prefix="/api/chat",     tags=["Chat IA"])
 app.include_router(analysis.router, prefix="/api/analysis", tags=["Análisis Financiero"])
 app.include_router(invoices.router, prefix="/api/invoices", tags=["Facturas"])
-app.include_router(fiscal.router, prefix="/api/fiscal", tags=["Información Fiscal"])
-app.include_router(fiscal.router, prefix="/api/fiscal", tags=["Calendario Fiscal"])
-
-
-app.include_router(fiscal.router, prefix="/api/fiscal", tags=["Calendario Fiscal"])
+app.include_router(fiscal.router,   prefix="/api/fiscal",   tags=["Información Fiscal"])
 
 
 @app.get("/")
