@@ -600,7 +600,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
           <div class="input-box">
             <div class="input-actions-left">
               <button class="input-action-btn" id="attach-btn" onclick="triggerFileUpload()" title="Adjuntar imagen o PDF">📎</button>
-              <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.xlsx,.csv,.doc,.docx" multiple onchange="handleFileSelect(event)">
+              <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.xlsx,.csv" multiple onchange="handleFileSelect(event)">
             </div>
             <textarea
               class="chat-input" id="chat-input"
@@ -611,7 +611,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
             ></textarea>
             <button class="send-btn" id="send-btn" onclick="sendMessage()">➤</button>
           </div>
-          <div class="input-hint">Enter para enviar · Shift+Enter nueva línea · Puedes adjuntar facturas e imágenes</div>
+          <div class="input-hint">Enter para enviar · Shift+Enter nueva línea · 📎 Adjunta imágenes, PDFs o Excel — la IA los leerá</div>
         </div>
       </div>
     </div>
@@ -1285,7 +1285,13 @@ async function processFile(file){
     if(bar){
       bar.classList.add('show');
       const fc=document.getElementById('file-preview-content');
-      if(fc) fc.textContent=`📎 ${S.attachedFiles.map(f=>f.name).join(', ')} (${S.attachedFiles.length} archivo${S.attachedFiles.length>1?'s':''})`;
+      const icons = S.attachedFiles.map(f=>{
+        if(f.type==='application/pdf'||f.name.endsWith('.pdf')) return '📄 '+f.name;
+        if(f.type.startsWith('image/')) return '🖼️ '+f.name;
+        if(f.name.endsWith('.xlsx')||f.name.endsWith('.xls')) return '📊 '+f.name;
+        return '📎 '+f.name;
+      });
+      if(fc) fc.textContent=icons.join(' · ')+(S.attachedFiles.length>1?` (${S.attachedFiles.length} archivos)`:'');
     }
   };
   reader.readAsDataURL(file);
