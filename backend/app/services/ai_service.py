@@ -148,7 +148,7 @@ async def ask_ai(
     messages.append({"role": "user", "content": question})
 
     response = await client.chat.completions.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=messages,
         max_tokens=1500,
         temperature=0.7,
@@ -178,7 +178,7 @@ async def classify_expense(description: str, amount: float) -> dict:
     """
 
     response = await client.chat.completions.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Eres un experto en fiscalidad española. Responde solo con JSON válido."},
             {"role": "user", "content": prompt}
@@ -222,7 +222,7 @@ async def generate_financial_insights(data: dict) -> list[str]:
     """
 
     response = await client.chat.completions.create(
-        model="gpt-4.1-mini",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "Eres un asesor financiero experto en autónomos españoles. Responde solo con JSON válido."},
             {"role": "user", "content": prompt}

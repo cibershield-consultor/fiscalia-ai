@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
 import uuid
+import traceback
 from app.core.database import get_db
 from app.models.conversation import Conversation, Message
 from app.services.ai_service import ask_ai
@@ -17,53 +19,57 @@ class ChatRequest(BaseModel):
     conversation_id: Optional[int] = None
 
 
-class ChatResponse(BaseModel):
-    answer: str
-    conversation_id: int
-    session_id: str
-
-
-@router.post("/", response_model=ChatResponse)
+@router.post("/")
 async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
-    # Get or create session
-    session_id = req.session_id or str(uuid.uuid4())
+    try:
+        session_id = req.session_id or str(uuid.uuid4())
 
-    # Get or create conversation
-    if req.conversation_id:
-        result = await db.execute(select(Conversation).where(Conversation.id == req.conversation_id))
-        conversation = result.scalar_one_or_none()
+        # Get or create conversation
+        conversation = None
+        if req.conversation_id:
+            result = await db.execute(
+                select(Conversation).where(Conversation.id == req.conversation_id)
+            )
+            conversation = result.scalar_one_or_none()
+
         if not conversation:
-            raise HTTPException(status_code=404, detail="Conversación no encontrada")
-    else:
-        conversation = Conversation(
-            session_id=session_id,
-            title=req.message[:60] + "..." if len(req.message) > 60 else req.message,
+            conversation = Conversation(
+                session_id=session_id,
+                title=req.message[:60],
+            )
+            db.add(conversation)
+            await db.commit()           # commit first so it gets an ID
+            await db.refresh(conversation)
+
+        # Load history
+        result = await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at)
         )
-        db.add(conversation)
-        await db.flush()
+        messages = result.scalars().all()
+        history = [{"role": m.role, "content": m.content} for m in messages]
 
-    # Get conversation history
-    result = await db.execute(
-        select(Message)
-        .where(Message.conversation_id == conversation.id)
-        .order_by(Message.created_at)
-    )
-    messages = result.scalars().all()
+        # Call OpenAI
+        answer = await ask_ai(req.message, conversation_history=history)
 
-    history = [{"role": m.role, "content": m.content} for m in messages]
+        # Save messages
+        db.add(Message(conversation_id=conversation.id, role="user",      content=req.message))
+        db.add(Message(conversation_id=conversation.id, role="assistant", content=answer))
+        await db.commit()
 
-    # Get AI response
-    answer = await ask_ai(req.message, conversation_history=history)
+        return JSONResponse(content={
+            "answer": answer,
+            "conversation_id": conversation.id,
+            "session_id": session_id,
+        })
 
-    # Save messages
-    user_msg = Message(conversation_id=conversation.id, role="user", content=req.message)
-    ai_msg = Message(conversation_id=conversation.id, role="assistant", content=answer)
-    db.add(user_msg)
-    db.add(ai_msg)
-    await db.commit()
-    await db.refresh(conversation)
-
-    return ChatResponse(answer=answer, conversation_id=conversation.id, session_id=session_id)
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e), "type": type(e).__name__}
+        )
 
 
 @router.get("/history/{conversation_id}")
@@ -74,4 +80,4 @@ async def get_history(conversation_id: int, db: AsyncSession = Depends(get_db)):
         .order_by(Message.created_at)
     )
     messages = result.scalars().all()
-    return [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in messages]
+    return [{"role": m.role, "content": m.content, "created_at": str(m.created_at)} for m in messages]
