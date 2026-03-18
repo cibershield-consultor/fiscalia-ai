@@ -384,6 +384,21 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 .trial-banner strong{color:var(--gold)}
 .trial-banner-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;padding:2px 6px}
 .trial-banner.hidden{display:none}
+
+/* ── PROFILE MODAL ── */
+.profile-section { margin-bottom: 24px }
+.profile-section-title { font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-weight:600;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border) }
+.profile-avatar-big { width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#4a3820,#8a6430);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;color:var(--gold2);border:2px solid rgba(232,184,75,0.3);margin:0 auto 16px;flex-shrink:0 }
+.profile-field { display:flex;flex-direction:column;gap:5px;margin-bottom:12px }
+.profile-field label { font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-weight:600 }
+.profile-field input { background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--font-b);font-size:.875rem;padding:9px 12px;outline:none;transition:var(--trans) }
+.profile-field input:focus { border-color:rgba(232,184,75,0.4);box-shadow:0 0 0 2px var(--goldglow) }
+.profile-msg { font-size:.78rem;padding:8px 12px;border-radius:7px;margin-top:8px;display:none }
+.profile-msg.ok  { background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);color:var(--green) }
+.profile-msg.err { background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red) }
+.profile-msg.show { display:block }
+.danger-zone { background:rgba(248,113,113,.05);border:1px solid rgba(248,113,113,.15);border-radius:10px;padding:14px }
+.danger-zone p { font-size:.78rem;color:var(--text2);margin-bottom:10px }
 </style>
 </head>
 <body>
@@ -413,6 +428,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
         <input type="password" id="login-pass" class="auth-input" placeholder="••••••••">
       </div>
       <button class="btn-auth" onclick="doLogin()" id="btn-login">Entrar</button>
+      <p style="text-align:center;margin-top:8px"><button onclick="showForgotModal()" style="background:none;border:none;color:var(--text3);font-size:.75rem;cursor:pointer;font-family:var(--font-b)">¿Olvidaste tu contraseña?</button></p>
       <div class="auth-divider">o</div>
       <button class="btn-guest" onclick="continueAsGuest()">Continuar sin cuenta →</button>
     </div>
@@ -500,7 +516,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     </div>
 
     <div class="sidebar-footer">
-      <div class="user-card" onclick="showPlanModal()">
+      <div class="user-card" onclick="showProfileModal()">
         <div class="user-avatar" id="user-avatar">?</div>
         <div class="user-info">
           <div class="user-name" id="user-name-display">Invitado</div>
@@ -1594,6 +1610,96 @@ async function exportCSV() {
     toast(`❌ ${e.message}`, 'err');
   }
 }
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:500px">
+    <button class="modal-close" onclick="hideProfileModal()">✕</button>
+
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="profile-avatar-big" id="profile-avatar-big">?</div>
+      <h2 style="font-family:var(--font-d);font-size:1.3rem" id="profile-modal-name">Mi perfil</h2>
+      <span class="chip chip-plan-free" id="profile-plan-chip" style="margin-top:6px">Plan Gratuito</span>
+    </div>
+
+    <!-- Edit profile -->
+    <div class="profile-section">
+      <div class="profile-section-title">Información personal</div>
+      <div class="profile-field">
+        <label>Nombre completo</label>
+        <input type="text" id="pf-name" placeholder="Tu nombre">
+      </div>
+      <div class="profile-field">
+        <label>Email</label>
+        <input type="email" id="pf-email" placeholder="tu@email.com">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="saveProfile()" id="pf-save-btn">Guardar cambios</button>
+      <div class="profile-msg" id="pf-profile-msg"></div>
+    </div>
+
+    <!-- Change password -->
+    <div class="profile-section">
+      <div class="profile-section-title">Cambiar contraseña</div>
+      <div class="profile-field">
+        <label>Contraseña actual</label>
+        <input type="password" id="pf-pass-current" placeholder="••••••••">
+      </div>
+      <div class="profile-field">
+        <label>Nueva contraseña</label>
+        <input type="password" id="pf-pass-new" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="profile-field">
+        <label>Confirmar nueva contraseña</label>
+        <input type="password" id="pf-pass-confirm" placeholder="Repite la nueva contraseña">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="changePassword()" id="pf-pass-btn">Cambiar contraseña</button>
+      <div class="profile-msg" id="pf-pass-msg"></div>
+    </div>
+
+    <!-- Logout + Delete -->
+    <div class="profile-section">
+      <div class="profile-section-title">Sesión</div>
+      <button class="btn btn-ghost" onclick="logout()" style="width:100%;margin-bottom:12px">
+        🚪 Cerrar sesión
+      </button>
+      <div class="danger-zone">
+        <p>Eliminar la cuenta borrará todos tus datos permanentemente.</p>
+        <button class="btn btn-danger btn-sm" onclick="deleteAccount()">🗑 Eliminar mi cuenta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="modal-overlay" id="forgot-modal">
+  <div class="modal" style="max-width:400px">
+    <button class="modal-close" onclick="hideForgotModal()">✕</button>
+    <h2 style="font-family:var(--font-d);font-size:1.3rem;margin-bottom:6px">Recuperar contraseña</h2>
+    <p style="color:var(--text2);font-size:.82rem;margin-bottom:20px">Introduce tu email y recibirás un token para restablecer tu contraseña.</p>
+
+    <div id="forgot-step-1">
+      <div class="auth-input-group" style="margin-bottom:12px">
+        <label class="profile-field label">Email</label>
+        <input type="email" id="forgot-email" class="auth-input" placeholder="tu@email.com">
+      </div>
+      <button class="btn-auth" onclick="requestReset()" id="forgot-req-btn">Solicitar recuperación</button>
+      <div class="profile-msg" id="forgot-msg" style="margin-top:10px"></div>
+    </div>
+
+    <div id="forgot-step-2" style="display:none">
+      <div class="profile-field" style="margin-bottom:10px">
+        <label>Token de recuperación</label>
+        <input type="text" id="forgot-token" class="auth-input" placeholder="Pega el token aquí" style="font-size:.75rem;font-family:monospace">
+      </div>
+      <div class="profile-field" style="margin-bottom:10px">
+        <label>Nueva contraseña</label>
+        <input type="password" id="forgot-new-pass" class="auth-input" placeholder="Mínimo 6 caracteres">
+      </div>
+      <button class="btn-auth" onclick="confirmReset()" id="forgot-confirm-btn">Restablecer contraseña</button>
+      <div class="profile-msg" id="forgot-msg-2" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
