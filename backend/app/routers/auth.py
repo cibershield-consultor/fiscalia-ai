@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
@@ -10,40 +9,14 @@ import jwt
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.config import settings
+from app.core.logging import logger
 from app.models.user import User
+from app.schemas.user import (
+    RegisterRequest, LoginRequest, UpdateProfileRequest,
+    ChangePasswordRequest, ResetPasswordRequest, ResetPasswordConfirmRequest
+)
 
 router = APIRouter()
-
-
-# ── Schemas ────────────────────────────────────────────────────
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str | None = None
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class UpdateProfileRequest(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
-
-
-class ResetPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordConfirmRequest(BaseModel):
-    token: str
-    new_password: str
 
 
 # ── Helpers ────────────────────────────────────────────────────
@@ -120,6 +93,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
+    logger.info(f"Nuevo usuario registrado: {req.email} (plan: {initial_plan})")
     token = create_access_token({"sub": str(user.id)})
     response = user_to_dict(user, token)
     if trial_days > 0:
