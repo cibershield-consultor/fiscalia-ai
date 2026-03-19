@@ -1,22 +1,21 @@
 FROM python:3.12-slim
 
-# Avoid .pyc files and unbuffered output for logs
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install dependencies first (better Docker layer caching)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
 COPY . .
 
-# Create directories for persistent data
 RUN mkdir -p uploads
 
 EXPOSE 8000
 
-# --workers 1 avoids SQLite concurrency issues
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
