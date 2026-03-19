@@ -64,18 +64,16 @@ async def ask_ai_with_rag(
     rag_docs = await retrieve_context(question, n_results=3)
     rag_context, references = format_context_for_prompt(rag_docs)
 
-    # 2. Si la pregunta es sobre normativa y el contexto RAG parece insuficiente,
-    #    enriquecer con búsqueda web directamente desde el backend (sin depender del modelo)
-    web_context = ""
-    if _needs_web_search(question, rag_context):
-        web_context = await _web_search_duckduckgo(question)
+    # 2. Datos en tiempo real de fuentes oficiales según el tema de la pregunta
+    #    (seg-social.es para jubilación, agenciatributaria.gob.es para IRPF/IVA, etc.)
+    live_context = await _get_live_context(question)
 
     # 3. Construir system prompt
     system = SYSTEM_PROMPT_BASE
     if rag_context:
-        system += f"\n\n=== CONTEXTO OFICIAL ===\n{rag_context}\n=== FIN ==="
-    if web_context:
-        system += f"\n\n=== INFORMACIÓN ACTUALIZADA (web) ===\n{web_context}\n=== FIN ==="
+        system += f"\n\n=== CONTEXTO BASE ===\n{rag_context}\n=== FIN ==="
+    if live_context:
+        system += f"\n\n=== ⚡ DATOS OFICIALES EN TIEMPO REAL (prevalecen sobre cualquier otro dato) ===\n{live_context}\n=== FIN ==="
 
     messages = [{"role": "system", "content": system}]
     if financial_context:
@@ -101,53 +99,21 @@ async def ask_ai_with_rag(
     return response.choices[0].message.content
 
 
-async def _web_search_duckduckgo(query: str) -> str:
-    """Búsqueda web via DuckDuckGo Instant Answer API (gratuita, sin API key)."""
-    import httpx
+async def _get_live_context(question: str) -> str:
+    """
+    Obtiene datos en tiempo real de fuentes oficiales según el tema de la pregunta.
+    Usa live_data_service que raspa directamente seg-social.es, agenciatributaria.gob.es, etc.
+    Falla silenciosamente — si no hay datos frescos, la IA usa solo el RAG estático.
+    """
     try:
-        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as http:
-            r = await http.get(
-                "https://api.duckduckgo.com/",
-                params={"q": query + " España", "format": "json", "no_html": "1", "skip_disambig": "1"},
-                headers={"User-Agent": "Mozilla/5.0 (compatible; FiscalIA)"}
-            )
-            if r.status_code == 200:
-                data = r.json()
-                parts = []
-                if data.get("AbstractText"):
-                    parts.append(data["AbstractText"])
-                    if data.get("AbstractURL"):
-                        parts.append(f"Fuente: {data['AbstractURL']}")
-                for topic in data.get("RelatedTopics", [])[:3]:
-                    if isinstance(topic, dict) and topic.get("Text"):
-                        parts.append(topic["Text"])
-                if parts:
-                    return "\n".join(parts)
+        from app.services.live_data_service import get_live_data_for_question
+        return await get_live_data_for_question(question)
     except Exception:
-        pass
-    return ""
+        return ""
 
 
-def _needs_web_search(question: str, rag_context: str) -> bool:
-    """Decide si la pregunta necesita complementarse con búsqueda web.
-    Criterios: pregunta sobre normativa + contexto RAG escaso o sin datos concretos."""
-    q = question.lower()
 
-    # Siempre buscar si pregunta por novedades, cambios recientes o fechas concretas
-    triggers = [
-        "novedad", "cambio", "actualiz", "nuevo", "nueva", "2024", "2025", "2026",
-        "recientemente", "este año", "ahora", "actualmente", "vigente",
-        "jubilación activa", "jubilacion activa", "cese de actividad",
-        "incapacidad temporal", "prestación", "subsidio",
-    ]
-    if any(t in q for t in triggers):
-        return True
 
-    # Buscar si el contexto RAG tiene menos de 200 caracteres útiles (respuesta pobre)
-    if len(rag_context.strip()) < 200:
-        return True
-
-    return False
 
 
 async def ask_ai_with_rag_stream(
@@ -164,17 +130,15 @@ async def ask_ai_with_rag_stream(
     rag_docs = await retrieve_context(question, n_results=3)
     rag_context, references = format_context_for_prompt(rag_docs)
 
-    # 2. Web search en backend si la pregunta lo necesita
-    web_context = ""
-    if _needs_web_search(question, rag_context):
-        web_context = await _web_search_duckduckgo(question)
+    # 2. Datos en tiempo real de fuentes oficiales (misma lógica que versión no-streaming)
+    live_context = await _get_live_context(question)
 
     # 3. Construir mensajes
     system = SYSTEM_PROMPT_BASE
     if rag_context:
-        system += f"\n\n=== CONTEXTO OFICIAL ===\n{rag_context}\n=== FIN ==="
-    if web_context:
-        system += f"\n\n=== INFORMACIÓN ACTUALIZADA (web) ===\n{web_context}\n=== FIN ==="
+        system += f"\n\n=== CONTEXTO BASE ===\n{rag_context}\n=== FIN ==="
+    if live_context:
+        system += f"\n\n=== ⚡ DATOS OFICIALES EN TIEMPO REAL (prevalecen sobre cualquier otro dato) ===\n{live_context}\n=== FIN ==="
 
     messages = [{"role": "system", "content": system}]
     if financial_context:

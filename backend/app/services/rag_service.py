@@ -359,13 +359,13 @@ ya sea como trabajador por cuenta ajena o como autónomo.
 
 REQUISITOS para acceder a jubilación activa:
 1. Haber cumplido la edad ordinaria de jubilación vigente en cada momento.
-   - En 2024: 65 años si se tienen ≥38 años y 6 meses cotizados; 66 años y 6 meses en el resto.
-   - En 2025: 65 años si se tienen ≥38 años y 6 meses cotizados; 66 años y 8 meses en el resto.
-   - En 2027 (objetivo final): 65 años si se tienen ≥38 años y 6 meses; 67 años en el resto.
+   - En 2025: 65 años si se tienen ≥38 años y 3 meses cotizados; 66 años y 6 meses en el resto.
+   - En 2026: 65 años si se tienen ≥38 años y 3 meses cotizados; 66 años y 10 meses en el resto.
+   - En 2027 (objetivo final): 65 años si se tienen ≥38 años y 3 meses; 67 años en el resto.
    NO se puede acceder mediante jubilación anticipada.
 2. Haber accedido a la jubilación después del 17 de marzo de 2013 (fecha de entrada en vigor).
 3. El porcentaje aplicado a la base reguladora debe ser del 100% (carrera completa).
-   Esto equivale a tener cotizados los años necesarios para la pensión máxima (aprox. 37 años en 2024).
+   Esto equivale a tener cotizados los años necesarios para la pensión máxima (aprox. 37 años en 2026).
 
 CUANTÍA: Se percibe el 50% de la pensión reconocida (excluidos complementos por mínimos).
 COTIZACIÓN: Durante la jubilación activa se cotiza únicamente por incapacidad temporal y
