@@ -168,6 +168,18 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         if file_descriptions:
             message_text = f"[Archivos adjuntos: {', '.join(file_descriptions)}]\n{req.message}"
 
+        # Build question with PDF content injected
+        question_with_pdfs = req.message
+        if pdf_texts:
+            pdf_context = "\n\n".join(pdf_texts)
+            question_with_pdfs = f"""{req.message}
+
+Contenido de los documentos adjuntos:
+
+{pdf_context}
+
+Analiza el contenido y responde la pregunta teniendo en cuenta estos documentos."""
+
         # Non-streaming response (always)
         answer = await ask_ai(
             question_with_pdfs,

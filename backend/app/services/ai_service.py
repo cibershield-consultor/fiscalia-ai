@@ -137,25 +137,31 @@ async def ask_ai_stream(question, conversation_history=None, context=None,
 
 
 async def classify_expense(description: str, amount: float) -> dict:
-    """Classify expense using smart model."""
-    prompt = f"""Clasifica según PGC PYMEs español (RD 1515/2007):
-Descripción: {description} | Importe: {amount}€
+    """Classify expense using smart model with detailed explanation."""
+    prompt = f"""Clasifica este gasto/ingreso según el PGC PYMEs español (RD 1515/2007).
 
-JSON SOLO:
-{{"categoria":"suministros|material_oficina|software|formacion|marketing|transporte|dietas|seguros|asesoria|cuota_autonomo|alquiler|equipos|telefono|otros|servicios|productos",
-"cuenta_pgc":"628","nombre_cuenta":"Suministros",
-"deducible":true,"porcentaje_deduccion":100,
-"explicacion":"por qué esta cuenta",
-"condiciones_deduccion":"condiciones",
-"nota_contribuyente":"diferencias según tipo"}}"""
+Descripción: {description}
+Importe: {amount}€
+
+Responde SOLO con JSON válido:
+{{
+  "categoria": "suministros|material_oficina|software|formacion|marketing|transporte|dietas|seguros|asesoria|cuota_autonomo|alquiler|equipos|telefono|otros|servicios|productos",
+  "cuenta_pgc": "número cuenta (ej: 628)",
+  "nombre_cuenta": "nombre completo de la cuenta PGC",
+  "deducible": true,
+  "porcentaje_deduccion": 100,
+  "resumen_ia": "1-2 frases explicando: qué tipo de gasto/ingreso es, en qué cuenta PGC va y por qué es o no deducible. Menciona si varía según el tipo de contribuyente.",
+  "condiciones_deduccion": "condiciones concretas para que sea deducible",
+  "nota_contribuyente": "diferencias clave según sea autónomo, empresa o asalariado"
+}}"""
 
     response = await client.chat.completions.create(
         model=MODEL_SMART,
         messages=[
-            {"role": "system", "content": "Experto PGC PYMEs. Solo JSON válido."},
+            {"role": "system", "content": "Eres experto en PGC PYMEs y fiscalidad española. Responde SOLO con JSON válido, sin texto adicional."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=350, temperature=0.1,
+        max_tokens=500, temperature=0.1,
     )
     try:
         text = response.choices[0].message.content.strip()
@@ -166,10 +172,13 @@ JSON SOLO:
         if s >= 0: text = text[s:e]
         return json.loads(text)
     except Exception:
-        return {"categoria": "otros", "cuenta_pgc": "629", "nombre_cuenta": "Otros servicios",
-                "deducible": False, "porcentaje_deduccion": 0,
-                "explicacion": "No clasificado", "condiciones_deduccion": "Consultar asesor",
-                "nota_contribuyente": "Depende del tipo de contribuyente"}
+        return {
+            "categoria": "otros", "cuenta_pgc": "629", "nombre_cuenta": "Otros servicios",
+            "deducible": False, "porcentaje_deduccion": 0,
+            "resumen_ia": "No se pudo clasificar automáticamente. Revisa manualmente la categoría.",
+            "condiciones_deduccion": "Consultar con asesor fiscal",
+            "nota_contribuyente": "La deducibilidad depende del tipo de contribuyente"
+        }
 
 
 async def generate_financial_insights(data: dict) -> list[str]:
