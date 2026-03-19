@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
-import uuid, traceback, json
+import uuid, traceback
 from datetime import datetime
 from app.core.database import get_db
 from app.models.conversation import Conversation, Message
 from app.models.invoice import Invoice
 from app.models.user import User
-from app.services.ai_service import ask_ai, ask_ai_stream
+from app.services.ai_service import ask_ai
 
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
@@ -168,34 +168,7 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         if file_descriptions:
             message_text = f"[Archivos adjuntos: {', '.join(file_descriptions)}]\n{req.message}"
 
-        # STREAMING response
-        if req.stream:
-            async def generate():
-                full_answer = ""
-                try:
-                    async for chunk in ask_ai_stream(
-                        question_with_pdfs,
-                        conversation_history=history,
-                        context=financial_context or None,
-                        image_base64=image_b64,
-                        image_media_type=image_type,
-                    ):
-                        full_answer += chunk
-                        yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-
-                    # Save to DB after streaming completes
-                    db.add(Message(conversation_id=conversation.id, role="user", content=message_text))
-                    db.add(Message(conversation_id=conversation.id, role="assistant", content=full_answer))
-                    await db.commit()
-
-                    yield f"data: {json.dumps({'done': True, 'conversation_id': conversation.id, 'session_id': session_id})}\n\n"
-                except Exception as e:
-                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
-            return StreamingResponse(generate(), media_type="text/event-stream",
-                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
-
-        # NON-STREAMING response
+        # Non-streaming response (always)
         answer = await ask_ai(
             question_with_pdfs,
             conversation_history=history,
