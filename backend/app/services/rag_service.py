@@ -155,6 +155,181 @@ SOCIEDAD CIVIL/COMUNIDAD DE BIENES: atribución de rentas a socios. Cada socio t
         "keywords": ["autónomo", "empresa", "trabajador", "asalariado", "SL", "SA", "comunidad bienes", "sociedad civil", "cuenta ajena", "perfil"],
         "source": "AEAT", "url": "https://sede.agenciatributaria.gob.es",
     },
+    # ── LGSS — Ley General Seguridad Social ──────────────────────
+    {
+        "id": "lgss_autonomos_reta",
+        "text": """Ley General de la Seguridad Social (RDL 8/2015) — Autónomos y RETA:
+El Régimen Especial de Trabajadores Autónomos (RETA) está regulado en el Título IV de la LGSS.
+Están obligados a cotizar en el RETA: trabajadores por cuenta propia con actividad habitual, socios de
+comunidades de bienes y sociedades civiles que ejerzan actividad, administradores de sociedades con
+participación ≥ 25% (o ≥33% sin funciones de dirección), familiares colaboradores del autónomo hasta 2º grado.
+Prestaciones del RETA: incapacidad temporal (IT) desde el 4º día (contingencias profesionales desde el 1º),
+maternidad/paternidad, riesgo durante embarazo, cese de actividad ("paro del autónomo"), jubilación,
+incapacidad permanente, viudedad, orfandad y prestación por fallecimiento.
+Cese de actividad: se puede solicitar si se acreditan pérdidas del 10% en el ejercicio anterior
+(excluido el primero), ejecución judicial o administrativa, fuerza mayor, divorcio o separación con
+pérdida de la gestión del negocio, violencia de género o discapacidad sobrevenida.
+IMPORTANTE: desde enero 2023 el sistema de cotización es por ingresos reales con regularización anual.
+Ley: RDL 8/2015 — https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724
+TGSS: https://sede.seg-social.gob.es/wps/portal/sede/sede/Trabajadores/TrabajoAutonomo""",
+        "keywords": ["LGSS", "seguridad social", "RETA", "autónomo", "cese actividad", "prestación", "IT", "baja", "jubilación", "cotizar", "ley general"],
+        "source": "LGSS/TGSS", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724",
+    },
+    {
+        "id": "lgss_regimen_general",
+        "text": """Ley General de la Seguridad Social — Régimen General (trabajadores por cuenta ajena):
+El Régimen General es el régimen ordinario para trabajadores asalariados. Regula bases y tipos de cotización.
+Tipos cotización 2026 (aproximados, verificar en BOE vigente):
+- Contingencias comunes: empresa 23,60% + trabajador 4,70% = 28,30% total.
+- Desempleo (contrato indefinido): empresa 5,50% + trabajador 1,55%.
+- FOGASA: empresa 0,20%.
+- Formación profesional: empresa 0,60% + trabajador 0,10%.
+- Horas extraordinarias: cotización adicional.
+Bases de cotización: mínima (SMI) y máxima (actualizada anualmente por RDL).
+SMI 2025-2026: 1.184€/mes (14 pagas). Base mínima cotización: equivalente al SMI.
+Prestación por desempleo: se genera cotizando al menos 360 días en los últimos 6 años. Cuantía 70% base reguladora los primeros 180 días, 50% el resto.
+IT (baja laboral): 60% base reguladora días 4-20, 75% desde día 21. Empresa abona días 4-15, INSS desde día 16.
+Fuente: LGSS RDL 8/2015 — https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724
+SEPE: https://www.sepe.es/HomeSepe/Prestaciones/que-prestaciones-hay/Prestacion-contributiva.html""",
+        "keywords": ["régimen general", "asalariado", "nómina", "cotización", "empresa", "desempleo", "paro", "FOGASA", "baja", "IT", "SMI", "contrato"],
+        "source": "LGSS/SEPE", "url": "https://www.sepe.es/HomeSepe/Prestaciones/que-prestaciones-hay/Prestacion-contributiva.html",
+    },
+    # ── DGT — Dirección General de Tributos ───────────────────
+    {
+        "id": "dgt_consultas_vinculantes",
+        "text": """Dirección General de Tributos (DGT) — Consultas vinculantes:
+La DGT es el órgano del Ministerio de Hacienda que interpreta la normativa tributaria.
+Sus consultas vinculantes tienen efecto vinculante para TODA la Administración tributaria (art. 89 LGT).
+Esto significa que si la DGT ha respondido a una consulta sobre tu situación concreta, Hacienda
+no puede aplicar un criterio distinto durante una inspección.
+
+Consultas vinculantes relevantes frecuentes:
+- Gastos deducibles en estimación directa: criterios sobre suministros, vehículo, teléfono.
+- Tratamiento fiscal de dietas y gastos de representación.
+- Deducibilidad de cuotas RETA como gasto de actividad (100% deducible, DGT V1847-05).
+- Actividades exentas de IVA (formación, sanidad, financieros).
+- Aplicación del 15% IS a entidades de nueva creación.
+- Tributación de socios administradores (IRPF vs. IS).
+
+Cómo consultar: La base de datos completa de consultas vinculantes está disponible en la web del Ministerio de Hacienda.
+IMPORTANTE: Cada consulta se aplica al caso concreto analizado. Casos similares pueden tener tratamiento diferente.
+Fuente DGT: https://www.hacienda.gob.es/es-ES/Normativa%20y%20doctrina/Doctrina/paginas/consultasdgt.aspx
+AEAT consultas: https://sede.agenciatributaria.gob.es/Sede/normativa-criterios-interpretativos/doctrina-criterios-interpretativos/consultas-direccion-general-tributos.html""",
+        "keywords": ["DGT", "consulta vinculante", "dirección general tributos", "hacienda", "interpretación", "criterio", "inspección", "vinculante"],
+        "source": "DGT/Ministerio Hacienda", "url": "https://www.hacienda.gob.es/es-ES/Normativa%20y%20doctrina/Doctrina/paginas/consultasdgt.aspx",
+    },
+    # ── Ministerio de Hacienda / Ley General Tributaria ───────
+    {
+        "id": "lgt_ley_general_tributaria",
+        "text": """Ley General Tributaria (Ley 58/2003) — Marco normativo básico:
+La LGT establece los principios y normas básicas del sistema tributario español.
+Conceptos clave para contribuyentes:
+- Prescripción tributaria: 4 años desde la finalización del plazo de presentación de la declaración.
+  Hacienda no puede reclamar deudas con más de 4 años de antigüedad (salvo interrupción).
+- Comprobación e inspección: AEAT puede comprobar declaraciones dentro del período no prescrito.
+- Infracciones y sanciones: leves (< 3.000€ o sin ocultación) 50%, graves 50-100%, muy graves 100-150%.
+- Recargos por presentación fuera de plazo (sin requerimiento previo): 1% por mes hasta 12 meses,
+  después 15% + intereses de demora (4,0625% en 2026).
+- Derecho a aplazamiento/fraccionamiento de deudas tributarias: solicitar antes del vencimiento.
+- Reducción por conformidad: 30% en actas de inspección si se acepta la propuesta.
+- Reducción por pronto pago: 25% adicional sobre sanción reducida si se paga en plazo.
+Fuente: BOE — https://www.boe.es/buscar/act.php?id=BOE-A-2003-23186
+Hacienda: https://www.hacienda.gob.es""",
+        "keywords": ["LGT", "prescripción", "4 años", "inspección", "sanción", "recargo", "infracción", "aplazamiento", "ley tributaria", "hacienda"],
+        "source": "BOE/Hacienda", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-23186",
+    },
+    # ── ICAC — Contabilidad ────────────────────────────────────
+    {
+        "id": "icac_contabilidad",
+        "text": """ICAC — Instituto de Contabilidad y Auditoría de Cuentas:
+El ICAC es el organismo oficial que regula la contabilidad y auditoría en España. Depende del Ministerio de Hacienda.
+Principales marcos contables en España:
+- PGC 2007 (RD 1514/2007): para empresas en general.
+- PGC PYMEs (RD 1515/2007): simplificado, para empresas con ≤2 de: activo ≤4M€, cifra negocios ≤8M€, ≤50 trabajadores.
+- Microempresas: pueden usar criterios simplificados del PGC PYMEs.
+- NIIF/IFRS: obligatorio para grupos cotizados.
+
+Obligaciones contables:
+- Llevar contabilidad ordenada (Código de Comercio art. 25): libro diario y libro de inventarios.
+- Autónomos en estimación directa simplificada: libros registro de ingresos, gastos, bienes de inversión.
+- Autónomos en módulos: solo libro registro de bienes de inversión.
+- Sociedades mercantiles: contabilidad completa + depósito de cuentas en Registro Mercantil.
+- Plazo depósito cuentas anuales: dentro de los 7 meses siguientes al cierre del ejercicio.
+
+Resoluciones ICAC: interpretaciones sobre aplicación del PGC, con efecto orientativo.
+Fuente ICAC: https://www.icac.gob.es
+Normativas: https://www.icac.gob.es/contabilidad/normativas/nacionales""",
+        "keywords": ["ICAC", "contabilidad", "PGC", "auditoría", "balance", "cuenta anual", "registro", "libro diario", "depósito", "microempresa"],
+        "source": "ICAC", "url": "https://www.icac.gob.es/contabilidad/normativas/nacionales",
+    },
+    # ── SEPE — Desempleo y prestaciones ───────────────────────
+    {
+        "id": "sepe_prestaciones",
+        "text": """SEPE — Servicio Público de Empleo Estatal:
+El SEPE gestiona las prestaciones por desempleo y formación en España.
+Prestación contributiva por desempleo ("paro"):
+- Requisito: cotización mínima 360 días en los últimos 6 años.
+- Duración: proporcional a días cotizados (de 2 meses por 360 días a 24 meses por 2.160+ días).
+- Cuantía: 70% de la base reguladora los primeros 180 días, 50% a partir del día 181.
+- Base reguladora: media de las bases de cotización por contingencias profesionales de los últimos 180 días.
+- Tope máximo: entre 1,75 y 2,25 veces el IPREM según hijos a cargo.
+- IPREM 2026: 600€/mes (verificar actualización anual).
+
+Subsidio por desempleo: para quienes agotan la prestación contributiva o no la generaron.
+Renta Activa de Inserción (RAI): colectivos en especial dificultad.
+Cese de actividad autónomos: gestionado también a través del SEPE en coordinación con TGSS.
+
+IMPORTANTE: Compatibilidad desempleo con trabajo a tiempo parcial o inicio de actividad como autónomo
+tiene reglas específicas. Consultar en SEPE antes de iniciar cualquier actividad.
+Fuente SEPE: https://www.sepe.es/HomeSepe/Prestaciones/que-prestaciones-hay/Prestacion-contributiva.html""",
+        "keywords": ["SEPE", "paro", "desempleo", "prestación", "subsidio", "RAI", "baja", "contributiva", "días cotizados", "IPREM", "360 días"],
+        "source": "SEPE", "url": "https://www.sepe.es/HomeSepe/Prestaciones/que-prestaciones-hay/Prestacion-contributiva.html",
+    },
+    # ── Ley de Autónomos ──────────────────────────────────────
+    {
+        "id": "ley_autonomos_estatuto",
+        "text": """Ley del Estatuto del Trabajo Autónomo (Ley 20/2007):
+El LETA es la norma básica que regula los derechos y obligaciones de los trabajadores autónomos en España.
+Derechos fundamentales del autónomo según el LETA:
+- Derecho a afiliarse y crear asociaciones de autónomos.
+- Derecho a la formación profesional.
+- Derecho a la conciliación familiar: tarifa plana mantenida en excedencias y permisos de maternidad/paternidad.
+- Derecho a interrupción de actividad por IT, maternidad, paternidad, riesgo embarazo.
+- TRADE (Trabajador Autónomo Económicamente Dependiente): autónomo que obtiene al menos 75% ingresos
+  de un único cliente. Tiene derecho a 18 días hábiles de vacaciones, indemnización por extinción
+  injustificada del contrato, y cobertura por accidente de trabajo desde el primer día.
+
+Autónomo societario: socio que trabaja en su propia SL y cotiza en el RETA.
+Familiar colaborador: cónyuge o familiar hasta 2º grado que trabaja en el negocio del autónomo.
+Puede cotizar con bonificaciones (puede acceder a tarifa plana de 80€/mes).
+
+Modificaciones recientes: Ley de Reformas Urgentes del Trabajo Autónomo (Ley 6/2017) introdujo:
+cambios en altas y bajas (hasta 3 veces/año sin coste el mismo día del cambio de tramo),
+deducción de gastos de suministros en vivienda habitual (30%), deducción de gastos de manutención.
+Fuente BOE: https://www.boe.es/buscar/act.php?id=BOE-A-2007-13409""",
+        "keywords": ["LETA", "estatuto autónomo", "TRADE", "familiar colaborador", "autónomo societario", "derechos", "ley autónomos", "20/2007", "6/2017"],
+        "source": "BOE", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2007-13409",
+    },
+    # ── Haciendas Forales ─────────────────────────────────────
+    {
+        "id": "haciendas_forales",
+        "text": """Haciendas Forales — País Vasco y Navarra:
+España tiene territorios con régimen fiscal especial: País Vasco (Álava, Gipuzkoa, Bizkaia) y Navarra.
+Estos territorios recaudan sus propios impuestos mediante el Concierto Económico (PV) y el Convenio Económico (Navarra).
+Diferencias fiscales principales respecto al régimen común:
+- Gestionan y recaudan IRPF, IS, IVA y otros tributos de forma independiente.
+- Tipos y deducciones pueden diferir: por ejemplo, IS en PV puede ser diferente al 25% general.
+- Los autónomos y empresas con domicilio en estos territorios tributan ante las Haciendas Forales,
+  no ante la AEAT estatal.
+- Hacienda Foral de Álava: https://www.araba.eus/hacienda
+- Hacienda Foral de Gipuzkoa: https://www.gipuzkoa.eus/hacienda
+- Hacienda Foral de Bizkaia: https://www.bizkaia.eus/ogasuna
+- Hacienda Foral de Navarra: https://www.hacienda.navarra.es
+IMPORTANTE: Si el usuario opera en el País Vasco o Navarra, la normativa puede diferir significativamente.
+Siempre indicar que consulten su Hacienda Foral correspondiente.""",
+        "keywords": ["País Vasco", "Navarra", "foral", "concierto económico", "Gipuzkoa", "Bizkaia", "Álava", "hacienda foral", "régimen foral"],
+        "source": "Haciendas Forales", "url": "https://www.hacienda.navarra.es",
+    },
     {
         "id": "facturacion_requisitos",
         "text": """Facturación en España — Requisitos legales (RD 1619/2012):
@@ -269,30 +444,68 @@ async def search_boe_realtime(query: str, max_results: int = 2) -> list[dict]:
 
 
 def get_aeat_references(query: str) -> list[dict]:
-    """Return relevant AEAT page references based on query keywords."""
+    """Return relevant official references based on query keywords."""
     q = query.lower()
     refs = []
-    pages = [
-        (["iva","303","390","repercutido","soportado"], "AEAT — IVA",
+
+    # AEAT pages
+    aeat_pages = [
+        (["iva","303","390","repercutido","soportado","factura"], "AEAT — IVA",
          "https://sede.agenciatributaria.gob.es/Sede/iva.html"),
-        (["irpf","renta","100","130","retención","tramo"], "AEAT — IRPF",
+        (["irpf","renta","100","130","retención","tramo","estimación directa"], "AEAT — IRPF",
          "https://sede.agenciatributaria.gob.es/Sede/irpf.html"),
-        (["sociedad","IS","200","202","empresa"], "AEAT — Impuesto Sociedades",
+        (["sociedad","IS","200","202","empresa","25%"], "AEAT — Impuesto Sociedades",
          "https://sede.agenciatributaria.gob.es/Sede/impuesto-sociedades.html"),
-        (["plazo","calendario","fecha","modelo","presentar"], "AEAT — Calendario contribuyente",
+        (["plazo","calendario","fecha","modelo","presentar","trimestral"], "AEAT — Calendario contribuyente",
          "https://sede.agenciatributaria.gob.es/Sede/Ayuda/calendario-contribuyente.html"),
-        (["deducible","gasto","deducir"], "AEAT — Deducciones y gastos",
+        (["deducible","gasto","deducir","gastos"], "AEAT — Deducciones y gastos",
          "https://sede.agenciatributaria.gob.es/Sede/irpf/deducciones-gastos.html"),
-        (["autónomo","036","alta","baja"], "AEAT — Autónomos",
+        (["autónomo","036","alta","baja","empresario"], "AEAT — Autónomos",
          "https://sede.agenciatributaria.gob.es/Sede/autonomos.html"),
     ]
-    for keywords, title, url in pages:
+    for keywords, title, url in aeat_pages:
         if any(k in q for k in keywords):
             refs.append({"source": "AEAT", "title": title, "url": url})
+
+    # DGT — consultas vinculantes
+    if any(k in q for k in ["consulta","vinculante","dgt","criterio","interpretación","hacienda dice"]):
+        refs.append({"source": "DGT", "title": "DGT — Consultas vinculantes",
+                     "url": "https://www.hacienda.gob.es/es-ES/Normativa%20y%20doctrina/Doctrina/paginas/consultasdgt.aspx"})
+
+    # LGT — prescripción, sanciones
+    if any(k in q for k in ["prescripción","sanción","infracción","recargo","aplazamiento","4 años","inspección"]):
+        refs.append({"source": "BOE/Hacienda", "title": "Ley General Tributaria (LGT)",
+                     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2003-23186"})
+
+    # ICAC — contabilidad
+    if any(k in q for k in ["contabilidad","icac","pgc","balance","cuentas anuales","registro mercantil","auditoría"]):
+        refs.append({"source": "ICAC", "title": "ICAC — Normativas contables",
+                     "url": "https://www.icac.gob.es/contabilidad/normativas/nacionales"})
+
+    # SEPE — desempleo
+    if any(k in q for k in ["paro","desempleo","sepe","prestación","subsidio","contributiva","inem"]):
+        refs.append({"source": "SEPE", "title": "SEPE — Prestaciones por desempleo",
+                     "url": "https://www.sepe.es/HomeSepe/Prestaciones/que-prestaciones-hay/Prestacion-contributiva.html"})
+
+    # LGSS
+    if any(k in q for k in ["lgss","ley general seguridad social","cese actividad","reta","prestación autónomo","jubilación autónomo"]):
+        refs.append({"source": "LGSS/TGSS", "title": "Ley General Seguridad Social",
+                     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724"})
+
+    # Ley Autónomos LETA
+    if any(k in q for k in ["letra","trade","familiar colaborador","estatuto autónomo","ley autónomos"]):
+        refs.append({"source": "BOE", "title": "Estatuto Trabajador Autónomo (LETA)",
+                     "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2007-13409"})
+
+    # Haciendas Forales
+    if any(k in q for k in ["país vasco","navarra","foral","bizkaia","gipuzkoa","álava","concierto"]):
+        refs.append({"source": "Haciendas Forales", "title": "Régimen Foral — País Vasco/Navarra",
+                     "url": "https://www.hacienda.navarra.es"})
+
     if not refs:
         refs.append({"source": "AEAT", "title": "AEAT — Sede electrónica",
                      "url": "https://sede.agenciatributaria.gob.es"})
-    return refs[:2]
+    return refs[:3]  # Return up to 3 references
 
 
 def get_tgss_references(query: str) -> list[dict]:
