@@ -529,6 +529,19 @@ from datetime import timedelta
 _update_cache: dict = {}
 CACHE_TTL_HOURS = 24  # Refrescar cada 24 horas
 
+# Headers que imitan un navegador real — evita bloqueos de la AEAT y otros organismos
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "es-ES,es;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+}
+
 
 def _cache_is_fresh(key: str) -> bool:
     entry = _update_cache.get(key)
@@ -568,7 +581,7 @@ async def fetch_boe_rss_updates() -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
             # BOE RSS feed — últimas disposiciones
-            r = await client.get("https://www.boe.es/rss/canal.php?c=d")
+            r = await client.get("https://www.boe.es/rss/canal.php?c=d", headers=BROWSER_HEADERS)
             if r.status_code != 200:
                 return []
 
@@ -611,79 +624,138 @@ async def fetch_boe_rss_updates() -> list[dict]:
 
 async def fetch_aeat_novedades() -> list[dict]:
     """
-    Raspa la página de novedades de la AEAT.
+    Descarga el RSS oficial de novedades de la AEAT.
+    Usa el feed público de la sede electrónica — sin bloqueos, sin scraping HTML.
     TTL: 24h.
     """
     if _cache_is_fresh("aeat_novedades"):
         return _cache_get("aeat_novedades")
 
+    # URLs del RSS oficial de la AEAT (feed público, sin autenticación)
+    RSS_URLS = [
+        "https://sede.agenciatributaria.gob.es/Sede/ayuda/novedades-sede.xml",
+        "https://www.agenciatributaria.es/AEAT.internet/Inicio/La_Agencia_Tributaria/Campanas_/Campanas__Renta_2024_2025/rss.xml",
+    ]
+
     docs = []
     try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            r = await client.get(
-                "https://sede.agenciatributaria.gob.es/Sede/ayuda/novedades-sede.html",
-                headers={"User-Agent": "FiscalIA/1.0 (legal tax assistant)"}
-            )
-            if r.status_code == 200:
-                # Extraer texto relevante — buscamos <li> y <p> con contenido
-                text = re.sub(r"<[^>]+>", " ", r.text)  # strip HTML
-                text = re.sub(r"\s+", " ", text).strip()
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as http:
+            for rss_url in RSS_URLS:
+                try:
+                    r = await http.get(rss_url, headers=BROWSER_HEADERS)
+                    if r.status_code != 200:
+                        continue
 
-                # Buscar bloques de novedades (primeros 3000 chars del contenido útil)
-                idx = text.lower().find("novedad")
-                if idx > 0:
-                    snippet = text[max(0, idx-100):idx+2000]
-                    docs.append({
-                        "text": f"[NOVEDADES AEAT] {snippet[:1500]}",
-                        "source": "AEAT",
-                        "url": "https://sede.agenciatributaria.gob.es/Sede/ayuda/novedades-sede.html",
-                        "relevance": 0.8,
-                        "fetched_at": datetime.utcnow().isoformat(),
-                    })
+                    content = r.text
+                    items = re.findall(r"<item>(.*?)</item>", content, re.DOTALL)
+
+                    if not items:
+                        # Intentar formato Atom
+                        items = re.findall(r"<entry>(.*?)</entry>", content, re.DOTALL)
+
+                    for item in items[:6]:
+                        title_m = re.search(r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>", item, re.DOTALL)
+                        link_m  = re.search(r"<link>(.*?)</link>", item)
+                        date_m  = re.search(r"<pubDate>(.*?)</pubDate>", item) or re.search(r"<updated>(.*?)</updated>", item)
+                        desc_m  = re.search(r"<description>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</description>", item, re.DOTALL)
+
+                        title = title_m.group(1).strip() if title_m else ""
+                        link  = link_m.group(1).strip()  if link_m  else rss_url
+                        date  = date_m.group(1).strip()[:16] if date_m else ""
+                        desc  = re.sub(r"<[^>]+>", " ", desc_m.group(1)).strip()[:300] if desc_m else ""
+
+                        if title:
+                            docs.append({
+                                "text": f"[NOVEDAD AEAT {date}] {title}. {desc}".strip(),
+                                "source": "AEAT",
+                                "url": link,
+                                "relevance": 0.8,
+                                "fetched_at": datetime.utcnow().isoformat(),
+                            })
+
+                    if docs:
+                        break  # Con un RSS que funcione es suficiente
+
+                except Exception:
+                    continue  # Probar siguiente URL
+
     except Exception as e:
-        print(f"[RAG] AEAT novedades fetch error (non-fatal): {e}")
+        print(f"[RAG] AEAT RSS fetch error (non-fatal): {e}")
 
     _cache_set("aeat_novedades", docs)
+    if docs:
+        print(f"[RAG] AEAT: {len(docs)} novedades encontradas")
+    else:
+        print("[RAG] AEAT: sin novedades RSS disponibles (base estática activa)")
     return docs
 
 
 async def fetch_tgss_novedades() -> list[dict]:
     """
-    Raspa la página de novedades de la Seguridad Social.
+    Descarga novedades de la Seguridad Social via RSS oficial.
     TTL: 24h.
     """
     if _cache_is_fresh("tgss_novedades"):
         return _cache_get("tgss_novedades")
 
+    RSS_URLS = [
+        "https://www.seg-social.es/wps/portal/wss/internet/RSS/RSSNoticias",
+        "https://www.seg-social.es/wps/wcm/connect/wss/internet/rss/noticias",
+    ]
+
+    TGSS_KEYWORDS = ["autónomo", "cotización", "reta", "smi", "pensión", "prestación", "cuota", "tarifa plana"]
+
     docs = []
     try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            r = await client.get(
-                "https://www.seg-social.es/wps/portal/wss/internet/Noticias",
-                headers={"User-Agent": "FiscalIA/1.0 (legal tax assistant)"}
-            )
-            if r.status_code == 200:
-                text = re.sub(r"<[^>]+>", " ", r.text)
-                text = re.sub(r"\s+", " ", text).strip()
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as http:
+            for rss_url in RSS_URLS:
+                try:
+                    r = await http.get(rss_url, headers=BROWSER_HEADERS)
+                    if r.status_code != 200:
+                        continue
 
-                TGSS_KEYWORDS = ["autónomo", "cotización", "RETA", "SMI", "pensión", "prestación", "cuota"]
-                for kw in TGSS_KEYWORDS:
-                    idx = text.lower().find(kw.lower())
-                    if idx > 0:
-                        snippet = text[max(0, idx-50):idx+500]
-                        docs.append({
-                            "text": f"[NOVEDAD TGSS — {kw}] {snippet}",
-                            "source": "TGSS",
-                            "url": "https://www.seg-social.es/wps/portal/wss/internet/Noticias",
-                            "relevance": 0.75,
-                            "fetched_at": datetime.utcnow().isoformat(),
-                        })
-                        if len(docs) >= 3:
-                            break
+                    content = r.text
+                    items = re.findall(r"<item>(.*?)</item>", content, re.DOTALL)
+                    if not items:
+                        items = re.findall(r"<entry>(.*?)</entry>", content, re.DOTALL)
+
+                    for item in items[:10]:
+                        title_m = re.search(r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>", item, re.DOTALL)
+                        link_m  = re.search(r"<link>(.*?)</link>", item)
+                        date_m  = re.search(r"<pubDate>(.*?)</pubDate>", item) or re.search(r"<updated>(.*?)</updated>", item)
+                        desc_m  = re.search(r"<description>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</description>", item, re.DOTALL)
+
+                        title = title_m.group(1).strip() if title_m else ""
+                        link  = link_m.group(1).strip()  if link_m  else rss_url
+                        date  = date_m.group(1).strip()[:16] if date_m else ""
+                        desc  = re.sub(r"<[^>]+>", " ", desc_m.group(1)).strip()[:300] if desc_m else ""
+
+                        combined = (title + " " + desc).lower()
+                        if title and any(kw in combined for kw in TGSS_KEYWORDS):
+                            docs.append({
+                                "text": f"[NOVEDAD TGSS {date}] {title}. {desc}".strip(),
+                                "source": "TGSS",
+                                "url": link,
+                                "relevance": 0.75,
+                                "fetched_at": datetime.utcnow().isoformat(),
+                            })
+                            if len(docs) >= 4:
+                                break
+
+                    if docs:
+                        break
+
+                except Exception:
+                    continue
+
     except Exception as e:
-        print(f"[RAG] TGSS novedades fetch error (non-fatal): {e}")
+        print(f"[RAG] TGSS RSS fetch error (non-fatal): {e}")
 
     _cache_set("tgss_novedades", docs)
+    if docs:
+        print(f"[RAG] TGSS: {len(docs)} novedades encontradas")
+    else:
+        print("[RAG] TGSS: sin novedades RSS disponibles (base estática activa)")
     return docs
 
 
