@@ -1,6 +1,12 @@
 """
 FiscalIA — Servicio IA con RAG integrado
-Modelo rápido (8B) + contexto vectorial + web en tiempo real
+Estrategia de tokens:
+  MODEL_FAST  (8B)  — 30.000 TPM gratuitos → todo el chat conversacional
+  MODEL_SMART (70B) —  6.000 TPM gratuitos → solo classify/JSON (pocas llamadas, alta precisión)
+  System prompt compacto (~300 tokens vs ~800 originales)
+  Historial recortado a 4 mensajes (mayor ahorro por conversación)
+  RAG reducido a 3 fragmentos
+  max_tokens output: 2000 chat, 500 classify, 350 insights, 3000 JSON/Excel
 """
 from groq import AsyncGroq
 from typing import Optional, AsyncIterator
@@ -9,49 +15,36 @@ from app.core.config import settings
 
 client = AsyncGroq(api_key=settings.GROQ_API_KEY)
 
+# 8B: ~30.000 TPM gratuitos — para todo el chat conversacional
 MODEL_FAST  = "llama-3.1-8b-instant"
+# 70B: ~6.000 TPM gratuitos — solo tareas de precisión (classify, JSON, Excel)
 MODEL_SMART = "llama-3.3-70b-versatile"
 
-SYSTEM_PROMPT_BASE = """Eres FiscalIA, asistente especializado en fiscalidad, contabilidad y asesoramiento financiero español.
+# Prompt compacto: mismas instrucciones, ~60% menos tokens que el original
+SYSTEM_PROMPT_BASE = """Eres FiscalIA, experto en fiscalidad, contabilidad y finanzas españolas.
 
-REGLAS FUNDAMENTALES:
-1. NUNCA asumas el tipo de contribuyente. No sabes si es autónomo, empresa, asalariado u otro perfil. Pregunta si es relevante para la respuesta.
-2. Basa tus respuestas en las FUENTES OFICIALES proporcionadas en el contexto. Cita siempre las fuentes.
-3. Si el contexto no tiene la información, indícalo claramente y dirige a la fuente oficial.
-4. No des asesoramiento vinculante. Recomienda gestor/asesor para decisiones importantes.
-5. La normativa cambia frecuentemente. Indica siempre que el usuario verifique en BOE, AEAT y TGSS.
-6. Clasifica gastos según PGC PYMEs (RD 1515/2007) cuando sea relevante.
+REGLAS:
+- Nunca asumas el tipo de contribuyente (autónomo/empresa/asalariado); pregunta si es relevante.
+- Basa las respuestas en el contexto oficial proporcionado. Cita las fuentes.
+- Si no tienes la info, indícalo y dirige a la fuente oficial.
+- No des asesoramiento vinculante; recomienda gestor/asesor para decisiones importantes.
+- Advierte de verificar en BOE/AEAT/TGSS, pues la normativa cambia.
+- Clasifica gastos según PGC PYMEs (RD 1515/2007) cuando corresponda.
 
-ESTILO DE RESPUESTA — MUY IMPORTANTE:
-- Sé detallado y completo. No respondas con una sola frase cuando el tema lo requiere.
-- Explica el contexto, los matices y los casos especiales relevantes para que el usuario entienda bien.
-- Si hay condiciones, excepciones o variaciones importantes, menciónalas explícitamente.
-- Usa ejemplos numéricos concretos cuando ayuden a entender (ej: "si facturas 40.000€ anuales, tu cuota de autónomo sería de 420€/mes según el tramo 10").
-- Para temas con varios puntos, usa ## para secciones y listas con guiones para mayor claridad.
-- En temas fiscales complejos, incluye al final un bloque "## Resumen" con los puntos clave.
-- Cuando des cifras o porcentajes, explica también qué significan en la práctica.
-- Si la respuesta varía según el tipo de contribuyente, explica cómo afecta a cada perfil.
-- Termina siempre con 1-2 referencias oficiales relevantes con sus URLs completas.
-- Incluye una nota de disclaimer cuando el tema requiera decisiones económicas importantes.
+ESTILO:
+- Respuestas completas con contexto, matices y casos especiales.
+- Ejemplos numéricos concretos cuando ayuden (ej: "40.000€ facturados → 420€/mes de cuota").
+- Usa ## y listas para temas con varios puntos; ## Resumen al final en temas complejos.
+- Explica el significado práctico de cifras. Indica variaciones por perfil de contribuyente.
+- Termina con 1-2 URLs oficiales. Añade disclaimer en decisiones económicas importantes.
 
-FUENTES OFICIALES QUE PUEDES CITAR:
-- BOE: https://www.boe.es — legislación y normativa
-- AEAT: https://sede.agenciatributaria.gob.es — impuestos (IVA, IRPF, IS)
-- TGSS: https://sede.seg-social.gob.es — cotizaciones y afiliación
-- LGSS: https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724 — Ley General Seguridad Social
-- DGT: https://www.hacienda.gob.es/es-ES/Normativa%20y%20doctrina/Doctrina/paginas/consultasdgt.aspx — consultas vinculantes
-- LGT: https://www.boe.es/buscar/act.php?id=BOE-A-2003-23186 — Ley General Tributaria
-- ICAC: https://www.icac.gob.es — contabilidad y auditoría
-- SEPE: https://www.sepe.es — desempleo y prestaciones
-- LETA: https://www.boe.es/buscar/act.php?id=BOE-A-2007-13409 — Estatuto Autónomo
-- Haciendas Forales: País Vasco y Navarra tienen normativa propia
+FUENTES (URL completa al citar):
+BOE boe.es | AEAT sede.agenciatributaria.gob.es | TGSS sede.seg-social.gob.es
+DGT hacienda.gob.es | ICAC icac.gob.es | SEPE sepe.es
+LGSS BOE-A-2015-11724 | LGT BOE-A-2003-23186 | LETA BOE-A-2007-13409
+País Vasco y Navarra: régimen foral propio.
 
-CUANDO TENGAS CONTEXTO DE FUENTES OFICIALES:
-- Usa esa información como base principal de tu respuesta
-- Amplía con explicaciones prácticas sobre cómo aplicar esa normativa
-- Si hay información contradictoria, indica cuál es la más reciente y por qué
-- Si el tema involucra País Vasco o Navarra, advierte del régimen foral
-- Si existe consulta vinculante DGT relevante, menciónalo como fuente de seguridad jurídica"""
+CON CONTEXTO RAG: úsalo como base principal, amplía con práctica, señala contradicciones."""
 
 
 async def ask_ai_with_rag(
@@ -64,22 +57,23 @@ async def ask_ai_with_rag(
     """Main chat function with RAG — retrieves context then generates response."""
     from app.services.rag_service import retrieve_context, format_context_for_prompt
 
-    # Retrieve relevant context
-    rag_docs = await retrieve_context(question, n_results=4)
+    # 3 fragmentos RAG (antes 4) — ahorra ~200 tokens de input por llamada
+    rag_docs = await retrieve_context(question, n_results=3)
     rag_context, references = format_context_for_prompt(rag_docs)
 
     # Build system prompt with RAG context
     system = SYSTEM_PROMPT_BASE
     if rag_context:
-        system += f"\n\n=== CONOCIMIENTO RECUPERADO DE FUENTES OFICIALES ===\n{rag_context}\n=== FIN DEL CONTEXTO ==="
+        system += f"\n\n=== CONTEXTO OFICIAL ===\n{rag_context}\n=== FIN ==="
 
     messages = [{"role": "system", "content": system}]
 
     if financial_context:
-        messages.append({"role": "system", "content": f"Datos financieros del usuario:\n{financial_context}"})
+        messages.append({"role": "system", "content": f"Datos financieros:\n{financial_context}"})
 
     if conversation_history:
-        messages.extend(conversation_history[-8:])
+        # 4 mensajes (antes 8) — mayor ahorro por conversación larga
+        messages.extend(conversation_history[-4:])
 
     if image_base64:
         user_content = [
@@ -94,7 +88,7 @@ async def ask_ai_with_rag(
     response = await client.chat.completions.create(
         model=MODEL_FAST,
         messages=messages,
-        max_tokens=2200,
+        max_tokens=2000,  # Respuestas completas sin desperdiciar TPM
         temperature=0.45,
     )
     return response.choices[0].message.content
@@ -110,19 +104,20 @@ async def ask_ai_with_rag_stream(
     """Streaming RAG chat — yields text chunks as they arrive."""
     from app.services.rag_service import retrieve_context, format_context_for_prompt
 
-    # Retrieve relevant context
-    rag_docs = await retrieve_context(question, n_results=4)
+    # 3 fragmentos RAG (antes 4)
+    rag_docs = await retrieve_context(question, n_results=3)
     rag_context, references = format_context_for_prompt(rag_docs)
 
     system = SYSTEM_PROMPT_BASE
     if rag_context:
-        system += f"\n\n=== CONOCIMIENTO RECUPERADO DE FUENTES OFICIALES ===\n{rag_context}\n=== FIN DEL CONTEXTO ==="
+        system += f"\n\n=== CONTEXTO OFICIAL ===\n{rag_context}\n=== FIN ==="
 
     messages = [{"role": "system", "content": system}]
     if financial_context:
         messages.append({"role": "system", "content": f"Datos del usuario:\n{financial_context}"})
     if conversation_history:
-        messages.extend(conversation_history[-8:])
+        # 4 mensajes (antes 8)
+        messages.extend(conversation_history[-4:])
     if image_base64:
         user_content = [
             {"type": "image_url", "image_url": {"url": f"data:{image_media_type or 'image/jpeg'};base64,{image_base64}"}},
@@ -135,7 +130,7 @@ async def ask_ai_with_rag_stream(
     stream = await client.chat.completions.create(
         model=MODEL_FAST,
         messages=messages,
-        max_tokens=2200,
+        max_tokens=2000,  # Respuestas completas sin desperdiciar TPM
         temperature=0.45,
         stream=True,
     )
@@ -227,7 +222,7 @@ async def ask_ai_for_json(prompt: str, system: str = "") -> str:
             {"role": "system", "content": system or "Solo JSON válido, sin markdown."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=2000, temperature=0.2,
+        max_tokens=3000, temperature=0.2,
     )
     raw = response.choices[0].message.content.strip()
     if "```" in raw:
