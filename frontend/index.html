@@ -713,6 +713,12 @@ tr:hover td{background:rgba(255,255,255,0.02)}
             <button class="btn btn-primary" onclick="submitInvoice()">💾 Guardar con clasificación IA</button>
             <button class="btn btn-ghost" onclick="toggleInvForm()">Cancelar</button>
           </div>
+
+          <!-- AI Classification Result Panel -->
+          <div id="inv-ai-result" style="display:none;margin-top:14px;background:rgba(232,184,75,0.06);border:1px solid rgba(232,184,75,0.2);border-radius:10px;padding:14px">
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--gold);font-weight:600;margin-bottom:10px">🤖 Análisis IA de la factura</div>
+            <div id="inv-ai-content"></div>
+          </div>
         </div>
 
         <div class="tbl-wrap">
@@ -1337,16 +1343,52 @@ function renderBarChart(meses){
 function toggleInvForm(){document.getElementById('inv-form')?.classList.toggle('open');}
 async function submitInvoice(){
   const fd=new FormData();
-  ['inv-tipo','inv-emisor','inv-concepto','inv-iva','inv-fecha'].forEach(id=>{const e=document.getElementById(id);if(e)fd.append(id.replace('inv-',''),e.value);});
+  ['inv-tipo','inv-emisor','inv-concepto','inv-iva','inv-fecha'].forEach(id=>{
+    const e=document.getElementById(id);if(e)fd.append(id.replace('inv-',''),e.value);
+  });
   fd.append('base_imponible',document.getElementById('inv-base')?.value||'0');
+  fd.append('user_id', S.user?.id||1);
+
+  const btn=document.querySelector('#inv-form .btn-primary');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Clasificando con IA...';}
+
   try{
-    fd.append('user_id', S.user?.id||1);
-  const r=await fetch(`${API}/invoices/`,{method:'POST',body:fd,credentials:'omit'});
-    if(!r.ok)throw new Error();
+    const r=await fetch(`${API}/invoices/`,{method:'POST',body:fd,credentials:'omit'});
+    if(!r.ok)throw new Error('Error del servidor');
     const d=await r.json();
-    toast(`✅ Factura guardada · Categoría: ${d.clasificacion_ia?.categoria||'otros'}`,'ok');
-    toggleInvForm();loadInvoices();
-  }catch{toast('❌ Error al guardar la factura','err');}
+    const ia=d.clasificacion_ia||{};
+
+    // Show AI explanation panel
+    const panel=document.getElementById('inv-ai-result');
+    const pc=document.getElementById('inv-ai-content');
+    if(panel&&pc){
+      const dedColor=ia.deducible?'#4ade80':'#f87171';
+      const dedText=ia.deducible?`✅ Deducible al ${ia.porcentaje_deduccion||100}%`:'❌ No deducible';
+      pc.innerHTML=`
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <span style="background:rgba(96,165,250,0.12);color:#60a5fa;padding:3px 10px;border-radius:100px;font-size:.72rem;font-weight:600">
+            📊 ${ia.cuenta_pgc||'629'} · ${ia.nombre_cuenta||ia.categoria||'—'}
+          </span>
+          <span style="background:${ia.deducible?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.12)'};color:${dedColor};padding:3px 10px;border-radius:100px;font-size:.72rem;font-weight:600">
+            ${dedText}
+          </span>
+        </div>
+        <p style="font-size:.83rem;color:rgba(240,238,232,.88);line-height:1.65;margin-bottom:8px">
+          ${ia.resumen_ia||ia.explicacion||'Clasificado automáticamente por IA.'}
+        </p>
+        ${ia.condiciones_deduccion?`<p style="font-size:.78rem;color:var(--text2);line-height:1.5"><strong style="color:var(--text)">Condiciones:</strong> ${ia.condiciones_deduccion}</p>`:''}
+        ${ia.nota_contribuyente?`<p style="font-size:.74rem;color:var(--text3);margin-top:5px;line-height:1.5">⚠️ ${ia.nota_contribuyente}</p>`:''}
+      `;
+      panel.style.display='block';
+    }
+
+    toast(`✅ Factura guardada · ${ia.cuenta_pgc||''} ${ia.nombre_cuenta||ia.categoria||''}`,'ok');
+    loadInvoices();
+  }catch(e){
+    toast(`❌ Error: ${e.message}`,'err');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='💾 Guardar con clasificación IA';}
+  }
 }
 async function loadInvoices(){
   try{const uid=S.user?.id||1;
