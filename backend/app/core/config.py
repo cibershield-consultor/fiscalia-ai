@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     STRIPE_PRICE_ID: Optional[str] = None
 
     # Trial
-    FREE_TRIAL_DAYS: int = 7
+    FREE_TRIAL_DAYS: int = 60
 
     # Environment
     ENVIRONMENT: str = "production"

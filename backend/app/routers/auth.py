@@ -137,7 +137,7 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
     token = create_access_token({"sub": str(user.id)})
     response = user_to_dict(user, token)
     if trial_days > 0:
-        response["trial_message"] = f"🎉 ¡Bienvenido! Tienes {trial_days} días de Premium gratis."
+        response["trial_message"] = f"🎉 ¡Bienvenido! Tienes {trial_days} días de Premium gratis. Sin tarjeta de crédito."
     log.info(f"New user registered: {req.email}")
     return JSONResponse(content=response)
 
