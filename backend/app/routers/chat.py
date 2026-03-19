@@ -2,16 +2,15 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from pydantic import BaseModel
 from typing import Optional
 import uuid, traceback
 from datetime import datetime
 from app.core.database import get_db
-from app.core.logging import logger
 from app.models.conversation import Conversation, Message
 from app.models.invoice import Invoice
 from app.models.user import User
 from app.services.ai_service import ask_ai
-from app.schemas.chat import ChatRequest
 
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
@@ -36,6 +35,20 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
         return f"[Error al leer PDF: {str(e)}]" 
 
 router = APIRouter()
+
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = None
+    conversation_id: Optional[int] = None
+    user_id: Optional[int] = None
+    # Multiple file support
+    files: Optional[list[dict]] = None  # [{base64, type, name}, ...]
+    # Keep single file for backwards compat
+    file_base64: Optional[str] = None
+    file_type: Optional[str] = None
+    file_name: Optional[str] = None
+    stream: bool = False
 
 
 async def build_financial_context(user_id: int, db: AsyncSession) -> str:
@@ -180,11 +193,9 @@ Analiza el contenido y responde la pregunta teniendo en cuenta estos documentos.
         db.add(Message(conversation_id=conversation.id, role="assistant", content=answer))
         await db.commit()
 
-        logger.info(f"Chat respondido — conv_id={conversation.id}, user_id={req.user_id}, chars={len(answer)}")
         return JSONResponse(content={"answer": answer, "conversation_id": conversation.id, "session_id": session_id})
 
     except Exception as e:
-        logger.error(f"Error en chat: {type(e).__name__}: {e}")
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
 
