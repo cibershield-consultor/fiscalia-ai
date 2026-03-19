@@ -350,6 +350,79 @@ VERIFACTU obligatorio: empresas IS desde 1/1/2027, autónomos IRPF desde 1/7/202
         "keywords": ["factura", "requisito", "obligatorio", "NIF", "IVA", "número", "serie", "emisor", "receptor", "simplificada", "electrónica"],
         "source": "AEAT/BOE", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2012-14696",
     },
+    # ── Jubilación activa ─────────────────────────────────────
+    {
+        "id": "jubilacion_activa",
+        "text": """Jubilación Activa — Ley General de la Seguridad Social (art. 214 LGSS, RDL 8/2015):
+La jubilación activa permite cobrar el 50% de la pensión de jubilación mientras se continúa trabajando,
+ya sea como trabajador por cuenta ajena o como autónomo.
+
+REQUISITOS para acceder a jubilación activa:
+1. Haber cumplido la edad ordinaria de jubilación vigente en cada momento.
+   - En 2024: 65 años si se tienen ≥38 años y 6 meses cotizados; 66 años y 6 meses en el resto.
+   - En 2025: 65 años si se tienen ≥38 años y 6 meses cotizados; 66 años y 8 meses en el resto.
+   - En 2027 (objetivo final): 65 años si se tienen ≥38 años y 6 meses; 67 años en el resto.
+   NO se puede acceder mediante jubilación anticipada.
+2. Haber accedido a la jubilación después del 17 de marzo de 2013 (fecha de entrada en vigor).
+3. El porcentaje aplicado a la base reguladora debe ser del 100% (carrera completa).
+   Esto equivale a tener cotizados los años necesarios para la pensión máxima (aprox. 37 años en 2024).
+
+CUANTÍA: Se percibe el 50% de la pensión reconocida (excluidos complementos por mínimos).
+COTIZACIÓN: Durante la jubilación activa se cotiza únicamente por incapacidad temporal y
+contingencias profesionales (cuota reducida). No se cotiza por jubilación.
+
+COMPATIBILIDAD CON TRABAJO:
+- Cuenta ajena: compatible con cualquier trabajo a tiempo completo o parcial.
+- Autónomo: compatible con el ejercicio de la actividad por cuenta propia.
+- No es compatible con trabajo en el sector público ni con otras pensiones del sistema.
+
+INCREMENTO DE PENSIÓN: Al cesar la actividad, la pensión se recalcula al 100% más un
+incremento del 0,25% por cada año cotizado durante la jubilación activa.
+
+SOLICITUD: Se tramita ante el INSS o la Mutua. Hay que comunicar el inicio y cese de actividad.
+
+Fuente: Art. 214 LGSS — https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724
+INSS: https://www.seg-social.es/wps/portal/wss/internet/Pensionistas/Jubilados/10694""",
+        "keywords": [
+            "jubilación activa", "jubilación", "pensión", "trabajar jubilado", "compatibilidad",
+            "50%", "edad jubilación", "67 años", "65 años", "cotizados", "LGSS", "art 214",
+            "cuenta propia jubilado", "autónomo jubilado", "seguir trabajando jubilado"
+        ],
+        "source": "LGSS/INSS", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724",
+    },
+    # ── Jubilación ordinaria y anticipada ────────────────────
+    {
+        "id": "jubilacion_ordinaria",
+        "text": """Jubilación ordinaria y anticipada — LGSS (arts. 205-208):
+JUBILACIÓN ORDINARIA:
+- Edad en 2025: 65 años con ≥38 años y 6 meses cotizados; 66 años y 8 meses en los demás casos.
+- Edad en 2027 (definitiva): 65 años con ≥38 años y 6 meses cotizados; 67 años en los demás casos.
+- Periodo mínimo de cotización: 15 años (180 meses), de los cuales 2 deben ser en los últimos 15 años.
+- Base reguladora: media de las bases de cotización de los últimos 25 años.
+- Porcentaje: desde el 50% (15 años cotizados) hasta el 100% (36,5 años cotizados en 2025).
+
+JUBILACIÓN ANTICIPADA VOLUNTARIA:
+- Máximo 2 años antes de la edad ordinaria.
+- Requisito: 35 años cotizados mínimo.
+- Penalización: entre 1,56% y 2% por trimestre anticipado (según años cotizados).
+
+JUBILACIÓN ANTICIPADA INVOLUNTARIA (por causa ajena):
+- Máximo 4 años antes de la edad ordinaria.
+- Requisito: 33 años cotizados y haber sido despedido (ERE, cierre empresa, ERTE...).
+- Penalización: entre 1,31% y 1,875% por trimestre anticipado.
+
+JUBILACIÓN PARCIAL: Compatible con contrato a tiempo parcial con reducción del 25-75% de jornada.
+Requiere un trabajador relevista que cubra la jornada reducida.
+
+Fuente: LGSS arts. 205-208 — https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724
+INSS: https://www.seg-social.es/wps/portal/wss/internet/Pensionistas/Jubilados""",
+        "keywords": [
+            "jubilación", "pensión", "edad", "67 años", "65 años", "anticipada", "ordinaria",
+            "años cotizados", "base reguladora", "penalización", "voluntaria", "involuntaria",
+            "parcial", "relevista", "15 años", "35 años"
+        ],
+        "source": "LGSS/INSS", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724",
+    },
 ]
 
 # ── BM25-like scoring (lightweight keyword search) ────────────
