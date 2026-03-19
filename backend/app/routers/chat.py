@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,6 +11,9 @@ from app.models.conversation import Conversation, Message
 from app.models.invoice import Invoice
 from app.models.user import User
 from app.services.ai_service import ask_ai
+from app.core.logging_config import log
+from app.core.security import sanitize_ai_input
+from app.core.rate_limit import limiter, CHAT_LIMIT
 
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
@@ -105,8 +108,14 @@ INSTRUCCIÓN: Usa estos datos para personalizar respuestas. Habla en primera per
 
 
 @router.post("/")
-async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(CHAT_LIMIT)
+async def chat(request: Request, req: ChatRequest, db: AsyncSession = Depends(get_db)):
     try:
+        # Sanitize input to prevent prompt injection
+        req.message = sanitize_ai_input(req.message) or ""
+        if not req.message and not (req.files or req.file_base64):
+            return JSONResponse(status_code=400, content={"detail": "Mensaje vacío"})
+
         session_id = req.session_id or str(uuid.uuid4())
 
         # Get or create conversation
@@ -196,7 +205,7 @@ Analiza el contenido y responde la pregunta teniendo en cuenta estos documentos.
         return JSONResponse(content={"answer": answer, "conversation_id": conversation.id, "session_id": session_id})
 
     except Exception as e:
-        traceback.print_exc()
+        log.error(f"Chat error: {e}")
         return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
 
 

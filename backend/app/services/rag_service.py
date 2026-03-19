@@ -1,3 +1,4 @@
+from app.core.logging_config import log
 """
 FiscalIA — Motor RAG ligero (sin sentence-transformers, sin ChromaDB)
 Búsqueda por TF-IDF + BM25 en memoria + web en tiempo real
@@ -350,79 +351,6 @@ VERIFACTU obligatorio: empresas IS desde 1/1/2027, autónomos IRPF desde 1/7/202
         "keywords": ["factura", "requisito", "obligatorio", "NIF", "IVA", "número", "serie", "emisor", "receptor", "simplificada", "electrónica"],
         "source": "AEAT/BOE", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2012-14696",
     },
-    # ── Jubilación activa ─────────────────────────────────────
-    {
-        "id": "jubilacion_activa",
-        "text": """Jubilación Activa — Ley General de la Seguridad Social (art. 214 LGSS, RDL 8/2015):
-La jubilación activa permite cobrar el 50% de la pensión de jubilación mientras se continúa trabajando,
-ya sea como trabajador por cuenta ajena o como autónomo.
-
-REQUISITOS para acceder a jubilación activa:
-1. Haber cumplido la edad ordinaria de jubilación vigente en cada momento.
-   - En 2025: 65 años si se tienen ≥38 años y 3 meses cotizados; 66 años y 6 meses en el resto.
-   - En 2026: 65 años si se tienen ≥38 años y 3 meses cotizados; 66 años y 10 meses en el resto.
-   - En 2027 (objetivo final): 65 años si se tienen ≥38 años y 3 meses; 67 años en el resto.
-   NO se puede acceder mediante jubilación anticipada.
-2. Haber accedido a la jubilación después del 17 de marzo de 2013 (fecha de entrada en vigor).
-3. El porcentaje aplicado a la base reguladora debe ser del 100% (carrera completa).
-   Esto equivale a tener cotizados los años necesarios para la pensión máxima (aprox. 37 años en 2026).
-
-CUANTÍA: Se percibe el 50% de la pensión reconocida (excluidos complementos por mínimos).
-COTIZACIÓN: Durante la jubilación activa se cotiza únicamente por incapacidad temporal y
-contingencias profesionales (cuota reducida). No se cotiza por jubilación.
-
-COMPATIBILIDAD CON TRABAJO:
-- Cuenta ajena: compatible con cualquier trabajo a tiempo completo o parcial.
-- Autónomo: compatible con el ejercicio de la actividad por cuenta propia.
-- No es compatible con trabajo en el sector público ni con otras pensiones del sistema.
-
-INCREMENTO DE PENSIÓN: Al cesar la actividad, la pensión se recalcula al 100% más un
-incremento del 0,25% por cada año cotizado durante la jubilación activa.
-
-SOLICITUD: Se tramita ante el INSS o la Mutua. Hay que comunicar el inicio y cese de actividad.
-
-Fuente: Art. 214 LGSS — https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724
-INSS: https://www.seg-social.es/wps/portal/wss/internet/Pensionistas/Jubilados/10694""",
-        "keywords": [
-            "jubilación activa", "jubilación", "pensión", "trabajar jubilado", "compatibilidad",
-            "50%", "edad jubilación", "67 años", "65 años", "cotizados", "LGSS", "art 214",
-            "cuenta propia jubilado", "autónomo jubilado", "seguir trabajando jubilado"
-        ],
-        "source": "LGSS/INSS", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724",
-    },
-    # ── Jubilación ordinaria y anticipada ────────────────────
-    {
-        "id": "jubilacion_ordinaria",
-        "text": """Jubilación ordinaria y anticipada — LGSS (arts. 205-208):
-JUBILACIÓN ORDINARIA:
-- Edad en 2025: 65 años con ≥38 años y 6 meses cotizados; 66 años y 8 meses en los demás casos.
-- Edad en 2027 (definitiva): 65 años con ≥38 años y 6 meses cotizados; 67 años en los demás casos.
-- Periodo mínimo de cotización: 15 años (180 meses), de los cuales 2 deben ser en los últimos 15 años.
-- Base reguladora: media de las bases de cotización de los últimos 25 años.
-- Porcentaje: desde el 50% (15 años cotizados) hasta el 100% (36,5 años cotizados en 2025).
-
-JUBILACIÓN ANTICIPADA VOLUNTARIA:
-- Máximo 2 años antes de la edad ordinaria.
-- Requisito: 35 años cotizados mínimo.
-- Penalización: entre 1,56% y 2% por trimestre anticipado (según años cotizados).
-
-JUBILACIÓN ANTICIPADA INVOLUNTARIA (por causa ajena):
-- Máximo 4 años antes de la edad ordinaria.
-- Requisito: 33 años cotizados y haber sido despedido (ERE, cierre empresa, ERTE...).
-- Penalización: entre 1,31% y 1,875% por trimestre anticipado.
-
-JUBILACIÓN PARCIAL: Compatible con contrato a tiempo parcial con reducción del 25-75% de jornada.
-Requiere un trabajador relevista que cubra la jornada reducida.
-
-Fuente: LGSS arts. 205-208 — https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724
-INSS: https://www.seg-social.es/wps/portal/wss/internet/Pensionistas/Jubilados""",
-        "keywords": [
-            "jubilación", "pensión", "edad", "67 años", "65 años", "anticipada", "ordinaria",
-            "años cotizados", "base reguladora", "penalización", "voluntaria", "involuntaria",
-            "parcial", "relevista", "15 años", "35 años"
-        ],
-        "source": "LGSS/INSS", "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11724",
-    },
 ]
 
 # ── BM25-like scoring (lightweight keyword search) ────────────
@@ -591,307 +519,19 @@ def get_tgss_references(query: str) -> list[dict]:
 
 
 # ══════════════════════════════════════════════════════════════
-#  SISTEMA DE ACTUALIZACIÓN AUTOMÁTICA
-#  Cache de 24h por fuente. Raspa BOE RSS, AEAT novedades y TGSS
-#  al arrancar y una vez al día. Sin base de datos externa.
-# ══════════════════════════════════════════════════════════════
-
-from datetime import timedelta
-
-# Cache en memoria: { "boe": {"docs": [...], "fetched_at": datetime}, ... }
-_update_cache: dict = {}
-CACHE_TTL_HOURS = 24  # Refrescar cada 24 horas
-
-# Headers que imitan un navegador real — evita bloqueos de la AEAT y otros organismos
-BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "es-ES,es;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-}
-
-
-def _cache_is_fresh(key: str) -> bool:
-    entry = _update_cache.get(key)
-    if not entry:
-        return False
-    age = datetime.utcnow() - entry["fetched_at"]
-    return age < timedelta(hours=CACHE_TTL_HOURS)
-
-
-def _cache_set(key: str, docs: list[dict]):
-    _update_cache[key] = {"docs": docs, "fetched_at": datetime.utcnow()}
-
-
-def _cache_get(key: str) -> list[dict]:
-    return _update_cache.get(key, {}).get("docs", [])
-
-
-# ── BOE RSS — novedades legislativas ──────────────────────────
-
-async def fetch_boe_rss_updates() -> list[dict]:
-    """
-    Descarga el RSS del BOE con las últimas publicaciones.
-    Filtra las entradas relevantes para fiscalidad y seguridad social.
-    TTL: 24h. Falla silenciosamente si no hay red.
-    """
-    if _cache_is_fresh("boe_rss"):
-        return _cache_get("boe_rss")
-
-    FISCAL_KEYWORDS = [
-        "autónomo", "RETA", "seguridad social", "IRPF", "IVA", "impuesto",
-        "cotización", "tribut", "hacienda", "fiscal", "renta", "sociedades",
-        "VERIFACTU", "facturación", "módulos", "estimación directa", "SMI",
-        "salario mínimo", "prestación", "desempleo", "cese de actividad",
-    ]
-
-    docs = []
-    try:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            # BOE RSS feed — últimas disposiciones
-            r = await client.get("https://www.boe.es/rss/canal.php?c=d", headers=BROWSER_HEADERS)
-            if r.status_code != 200:
-                return []
-
-            # Parse RSS manualmente (sin dependencia externa)
-            content = r.text
-            items = re.findall(r"<item>(.*?)</item>", content, re.DOTALL)
-
-            for item in items[:40]:  # Analizar los 40 más recientes
-                title_m = re.search(r"<title><!\[CDATA\[(.*?)\]\]></title>", item)
-                link_m  = re.search(r"<link>(.*?)</link>", item)
-                date_m  = re.search(r"<pubDate>(.*?)</pubDate>", item)
-                desc_m  = re.search(r"<description><!\[CDATA\[(.*?)\]\]></description>", item)
-
-                title = title_m.group(1).strip() if title_m else ""
-                link  = link_m.group(1).strip()  if link_m  else ""
-                date  = date_m.group(1).strip()  if date_m  else ""
-                desc  = desc_m.group(1).strip()  if desc_m  else ""
-
-                # Filtrar solo entradas fiscalmente relevantes
-                combined = (title + " " + desc).lower()
-                if any(kw.lower() in combined for kw in FISCAL_KEYWORDS):
-                    docs.append({
-                        "text": f"[NOVEDAD BOE {date[:16]}] {title}. {desc[:300]}",
-                        "source": "BOE",
-                        "url": link,
-                        "relevance": 0.85,
-                        "fetched_at": datetime.utcnow().isoformat(),
-                    })
-                    if len(docs) >= 5:
-                        break
-
-    except Exception as e:
-        print(f"[RAG] BOE RSS fetch error (non-fatal): {e}")
-
-    _cache_set("boe_rss", docs)
-    if docs:
-        print(f"[RAG] BOE RSS: {len(docs)} novedades fiscales encontradas")
-    return docs
-
-
-async def fetch_aeat_novedades() -> list[dict]:
-    """
-    Descarga el RSS oficial de novedades de la AEAT.
-    Usa el feed público de la sede electrónica — sin bloqueos, sin scraping HTML.
-    TTL: 24h.
-    """
-    if _cache_is_fresh("aeat_novedades"):
-        return _cache_get("aeat_novedades")
-
-    # URLs del RSS oficial de la AEAT (feed público, sin autenticación)
-    RSS_URLS = [
-        "https://sede.agenciatributaria.gob.es/Sede/ayuda/novedades-sede.xml",
-        "https://www.agenciatributaria.es/AEAT.internet/Inicio/La_Agencia_Tributaria/Campanas_/Campanas__Renta_2024_2025/rss.xml",
-    ]
-
-    docs = []
-    try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as http:
-            for rss_url in RSS_URLS:
-                try:
-                    r = await http.get(rss_url, headers=BROWSER_HEADERS)
-                    if r.status_code != 200:
-                        continue
-
-                    content = r.text
-                    items = re.findall(r"<item>(.*?)</item>", content, re.DOTALL)
-
-                    if not items:
-                        # Intentar formato Atom
-                        items = re.findall(r"<entry>(.*?)</entry>", content, re.DOTALL)
-
-                    for item in items[:6]:
-                        title_m = re.search(r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>", item, re.DOTALL)
-                        link_m  = re.search(r"<link>(.*?)</link>", item)
-                        date_m  = re.search(r"<pubDate>(.*?)</pubDate>", item) or re.search(r"<updated>(.*?)</updated>", item)
-                        desc_m  = re.search(r"<description>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</description>", item, re.DOTALL)
-
-                        title = title_m.group(1).strip() if title_m else ""
-                        link  = link_m.group(1).strip()  if link_m  else rss_url
-                        date  = date_m.group(1).strip()[:16] if date_m else ""
-                        desc  = re.sub(r"<[^>]+>", " ", desc_m.group(1)).strip()[:300] if desc_m else ""
-
-                        if title:
-                            docs.append({
-                                "text": f"[NOVEDAD AEAT {date}] {title}. {desc}".strip(),
-                                "source": "AEAT",
-                                "url": link,
-                                "relevance": 0.8,
-                                "fetched_at": datetime.utcnow().isoformat(),
-                            })
-
-                    if docs:
-                        break  # Con un RSS que funcione es suficiente
-
-                except Exception:
-                    continue  # Probar siguiente URL
-
-    except Exception as e:
-        print(f"[RAG] AEAT RSS fetch error (non-fatal): {e}")
-
-    _cache_set("aeat_novedades", docs)
-    if docs:
-        print(f"[RAG] AEAT: {len(docs)} novedades encontradas")
-    else:
-        print("[RAG] AEAT: sin novedades RSS disponibles (base estática activa)")
-    return docs
-
-
-async def fetch_tgss_novedades() -> list[dict]:
-    """
-    Descarga novedades de la Seguridad Social via RSS oficial.
-    TTL: 24h.
-    """
-    if _cache_is_fresh("tgss_novedades"):
-        return _cache_get("tgss_novedades")
-
-    RSS_URLS = [
-        "https://www.seg-social.es/wps/portal/wss/internet/RSS/RSSNoticias",
-        "https://www.seg-social.es/wps/wcm/connect/wss/internet/rss/noticias",
-    ]
-
-    TGSS_KEYWORDS = ["autónomo", "cotización", "reta", "smi", "pensión", "prestación", "cuota", "tarifa plana"]
-
-    docs = []
-    try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as http:
-            for rss_url in RSS_URLS:
-                try:
-                    r = await http.get(rss_url, headers=BROWSER_HEADERS)
-                    if r.status_code != 200:
-                        continue
-
-                    content = r.text
-                    items = re.findall(r"<item>(.*?)</item>", content, re.DOTALL)
-                    if not items:
-                        items = re.findall(r"<entry>(.*?)</entry>", content, re.DOTALL)
-
-                    for item in items[:10]:
-                        title_m = re.search(r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>", item, re.DOTALL)
-                        link_m  = re.search(r"<link>(.*?)</link>", item)
-                        date_m  = re.search(r"<pubDate>(.*?)</pubDate>", item) or re.search(r"<updated>(.*?)</updated>", item)
-                        desc_m  = re.search(r"<description>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</description>", item, re.DOTALL)
-
-                        title = title_m.group(1).strip() if title_m else ""
-                        link  = link_m.group(1).strip()  if link_m  else rss_url
-                        date  = date_m.group(1).strip()[:16] if date_m else ""
-                        desc  = re.sub(r"<[^>]+>", " ", desc_m.group(1)).strip()[:300] if desc_m else ""
-
-                        combined = (title + " " + desc).lower()
-                        if title and any(kw in combined for kw in TGSS_KEYWORDS):
-                            docs.append({
-                                "text": f"[NOVEDAD TGSS {date}] {title}. {desc}".strip(),
-                                "source": "TGSS",
-                                "url": link,
-                                "relevance": 0.75,
-                                "fetched_at": datetime.utcnow().isoformat(),
-                            })
-                            if len(docs) >= 4:
-                                break
-
-                    if docs:
-                        break
-
-                except Exception:
-                    continue
-
-    except Exception as e:
-        print(f"[RAG] TGSS RSS fetch error (non-fatal): {e}")
-
-    _cache_set("tgss_novedades", docs)
-    if docs:
-        print(f"[RAG] TGSS: {len(docs)} novedades encontradas")
-    else:
-        print("[RAG] TGSS: sin novedades RSS disponibles (base estática activa)")
-    return docs
-
-
-async def refresh_all_sources():
-    """
-    Refresca todas las fuentes externas en paralelo.
-    Se llama al arrancar la app y cada 24h.
-    """
-    import asyncio
-    print("[RAG] Refrescando fuentes externas (BOE, AEAT, TGSS)...")
-    results = await asyncio.gather(
-        fetch_boe_rss_updates(),
-        fetch_aeat_novedades(),
-        fetch_tgss_novedades(),
-        return_exceptions=True,
-    )
-    total = sum(len(r) for r in results if isinstance(r, list))
-    print(f"[RAG] Actualización completada: {total} documentos frescos en cache")
-    return total
-
-
-# ══════════════════════════════════════════════════════════════
 #  MOTOR RAG PRINCIPAL
 # ══════════════════════════════════════════════════════════════
 
 async def retrieve_context(query: str, n_results: int = 3) -> list[dict]:
     """
-    Recupera contexto combinando 4 capas (ordenadas por prioridad):
-      1. Novedades en tiempo real (BOE RSS, AEAT, TGSS) — datos del día
-      2. Base de conocimiento BM25 en memoria               — datos base sólidos
-      3. BOE API búsqueda puntual                           — legislación concreta
-      4. Referencias AEAT/TGSS                              — links oficiales
-
-    Las novedades recientes siempre tienen prioridad sobre la base estática.
+    Retrieve relevant context combining:
+    1. In-memory BM25 knowledge base (instant, 0MB extra RAM)
+    2. BOE real-time API (optional, graceful fallback)
+    3. AEAT/TGSS reference links
     """
-    import asyncio
     all_context = []
 
-    # 1. Novedades recientes — busca en el cache (se refresca cada 24h)
-    #    Si el cache está vacío, intenta fetchear ahora (primera vez)
-    live_docs = []
-    for cache_key, fetch_fn in [
-        ("boe_rss",       fetch_boe_rss_updates),
-        ("aeat_novedades", fetch_aeat_novedades),
-        ("tgss_novedades", fetch_tgss_novedades),
-    ]:
-        if not _cache_is_fresh(cache_key):
-            try:
-                await fetch_fn()
-            except Exception:
-                pass
-        cached = _cache_get(cache_key)
-        live_docs.extend(cached)
-
-    # Filtrar novedades relevantes para la query actual
-    query_tokens = set(_tokenize(query))
-    for doc in live_docs:
-        doc_tokens = set(_tokenize(doc["text"]))
-        overlap = len(query_tokens & doc_tokens)
-        if overlap >= 1:  # Al menos 1 token en común
-            all_context.append({**doc, "relevance": doc.get("relevance", 0.8)})
-
-    # 2. Knowledge base local (BM25) — siempre incluir los más relevantes
+    # 1. Knowledge base search (instant)
     kb_docs = search_knowledge_base(query, n_results)
     for doc in kb_docs:
         all_context.append({
@@ -901,24 +541,25 @@ async def retrieve_context(query: str, n_results: int = 3) -> list[dict]:
             "relevance": 1.0,
         })
 
-    # 3. BOE API búsqueda puntual (non-blocking)
+    # 2. BOE real-time (non-blocking, best-effort)
     try:
         boe_results = await search_boe_realtime(query, max_results=1)
         all_context.extend([{**r, "relevance": 0.6} for r in boe_results])
     except Exception:
         pass
 
-    # 4. Referencias AEAT/TGSS
+    # 3. AEAT references
     for ref in get_aeat_references(query):
-        if not any(ref["url"] in c.get("url", "") for c in all_context):
+        # Only add if not already covered
+        if not any(ref["url"] in c.get("url","") for c in all_context):
             all_context.append({"text": ref["title"], "source": ref["source"],
-                                 "url": ref["url"], "relevance": 0.5})
+                               "url": ref["url"], "relevance": 0.5})
+
+    # 4. TGSS references
     for ref in get_tgss_references(query):
         all_context.append({"text": ref["title"], "source": ref["source"],
-                             "url": ref["url"], "relevance": 0.5})
+                            "url": ref["url"], "relevance": 0.5})
 
-    # Ordenar por relevancia y devolver los N mejores
-    all_context.sort(key=lambda x: x.get("relevance", 0), reverse=True)
     return all_context[:5]
 
 
@@ -928,44 +569,12 @@ def format_context_for_prompt(context_docs: list[dict]) -> tuple[str, list[dict]
         return "", []
     parts, references = [], []
     for i, doc in enumerate(context_docs, 1):
-        # Marcar novedades recientes para que la IA les dé prioridad
-        prefix = "⚡ ACTUALIZACIÓN RECIENTE" if "NOVEDAD" in doc.get("text", "") else f"Fuente {i}"
-        parts.append(f"[{prefix} — {doc['source']}]\n{doc['text']}")
+        parts.append(f"[Fuente {i} — {doc['source']}]\n{doc['text']}")
         if doc.get("url"):
             references.append({"num": i, "source": doc["source"], "url": doc["url"]})
     return "\n\n".join(parts), references
 
 
 async def initialize_knowledge_base():
-    """
-    Arranca el motor RAG:
-    - Carga la base estática en memoria (instantáneo)
-    - Lanza el primer fetch de fuentes externas en background
-    - Programa refresco automático cada 24h
-    """
-    import asyncio
-
-    print(f"[RAG] Base estática cargada: {len(FISCAL_KNOWLEDGE_BASE)} documentos")
-
-    # Primer fetch en background para no bloquear el arranque
-    asyncio.create_task(_background_refresh_loop())
-    print("[RAG] Actualizador automático iniciado (refresco cada 24h)")
-
-
-async def _background_refresh_loop():
-    """Loop infinito que refresca las fuentes externas cada 24h."""
-    import asyncio
-
-    # Primer fetch inmediato al arrancar
-    try:
-        await refresh_all_sources()
-    except Exception as e:
-        print(f"[RAG] Error en primer fetch (non-fatal): {e}")
-
-    # Luego cada 24h
-    while True:
-        await asyncio.sleep(CACHE_TTL_HOURS * 3600)
-        try:
-            await refresh_all_sources()
-        except Exception as e:
-            print(f"[RAG] Error en refresco programado (non-fatal): {e}")
+    """No-op — knowledge base is in-memory, always ready."""
+    log.info(f"[RAG] Base de conocimiento cargada: {len(FISCAL_KNOWLEDGE_BASE)} documentos (BM25 en memoria)")

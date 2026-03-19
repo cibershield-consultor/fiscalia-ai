@@ -8,6 +8,10 @@ from typing import Optional
 import jwt
 
 from app.core.database import get_db
+from app.core.logging_config import log
+from app.core.security import sanitize_text, is_safe_email, is_strong_password
+from app.core.rate_limit import limiter, AUTH_LIMIT
+from fastapi import Request
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.config import settings
 from app.models.user import User
@@ -97,7 +101,17 @@ async def get_current_user(
 
 # ── Register ───────────────────────────────────────────────────
 @router.post("/register")
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_LIMIT)
+async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    # Validate email and password
+    if not is_safe_email(req.email):
+        raise HTTPException(400, "Formato de email inválido")
+    valid_pass, pass_err = is_strong_password(req.password)
+    if not valid_pass:
+        raise HTTPException(400, pass_err)
+    if req.full_name:
+        req.full_name = sanitize_text(req.full_name, max_length=100)
+
     result = await db.execute(select(User).where(User.email == req.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="El email ya está registrado")
@@ -124,12 +138,14 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     response = user_to_dict(user, token)
     if trial_days > 0:
         response["trial_message"] = f"🎉 ¡Bienvenido! Tienes {trial_days} días de Premium gratis."
+    log.info(f"New user registered: {req.email}")
     return JSONResponse(content=response)
 
 
 # ── Login ──────────────────────────────────────────────────────
 @router.post("/login")
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_LIMIT)
+async def login(request: Request, req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
 
